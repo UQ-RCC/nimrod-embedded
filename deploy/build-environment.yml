@@ -1,0 +1,36 @@
+---
+- hosts: 'wiener'
+  become: no
+  vars:
+    #root_dir: /opt/nimrod-embedded
+    bin_dir: "{{ root_dir }}/bin"
+    tar_dir: "{{ root_dir }}/usr/local/tar"
+    java_home: "{{ root_dir }}/lib/jvm/jdk-10.0.1"
+    qpid_home: "{{ root_dir }}/opt/qpid-broker/7.0.4"
+  tasks:
+    - name: create folders
+      file: path={{ item }} state=directory
+      loop: ["{{ root_dir }}", "{{ bin_dir }}", "{{ tar_dir }}", "{{ java_home }}", "{{ qpid_home }}"]
+    - name: 'download openjdk tarball'
+      get_url:
+        url: https://download.java.net/java/GA/jdk10/10.0.1/fb4372174a714e6b8c52526dc134031e/10//openjdk-10.0.1_linux-x64_bin.tar.gz
+        dest: "{{ tar_dir }}/openjdk-10.0.1_linux-x64_bin.tar.gz"
+        checksum: sha1:1377697996cad66def4f6627d13a031a26af9b7c
+    - name: 'extract openjdk tarball'
+      unarchive:
+        src: "{{ tar_dir }}/openjdk-10.0.1_linux-x64_bin.tar.gz"
+        dest: "{{ java_home }}/../"
+        remote_src: yes
+        creates: "{{ java_home }}/bin/java"
+    - name: 'download qpid tarball'
+      get_url:
+        url: http://archive.apache.org/dist/qpid/broker-j/7.0.4/binaries/apache-qpid-broker-j-7.0.4-bin.tar.gz
+        dest: "{{ tar_dir }}/apache-qpid-broker-j-7.0.4-bin.tar.gz"
+        checksum: sha1:114d033415363821a54def92c43f911675cab5a3
+      register: qpid_tarball
+    - name: 'extract qpid tarball'
+      unarchive:
+        src: "{{ qpid_tarball.dest }}"
+        dest: "{{ root_dir }}/opt"
+        remote_src: yes
+        creates: "{{ qpid_home }}/bin/qpid-server"
