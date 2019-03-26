@@ -333,7 +333,7 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 		});
 	}
 
-	if(sysinfo.pbs_server == "flm1")
+	if(sysinfo.pbs_server == "flm1" || sysinfo.pbs_server == "flashmgr2")
 		sysinfo.rcc_cluster = rcc_cluster_t::flashlite;
 	else if(sysinfo.pbs_server == "tinmgmr1")
 		sysinfo.rcc_cluster = rcc_cluster_t::tinaroo;
