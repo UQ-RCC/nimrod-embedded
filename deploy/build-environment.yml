@@ -1,5 +1,33 @@
 ---
-- hosts: 'wiener'
+- hosts: 'localhost'
+  become: no
+  tasks:
+    - name: download openjdk tarball
+      get_url:
+        url: https://download.java.net/java/GA/jdk10/10.0.1/fb4372174a714e6b8c52526dc134031e/10//openjdk-10.0.1_linux-x64_bin.tar.gz
+        dest: "./openjdk-10.0.1_linux-x64_bin.tar.gz"
+        checksum: sha256:0b14aaecd5323457bd15dc7798d08181ad04bad4156e55387ed714190912a9ce
+      register: openjdk_tarball
+    - name: download qpid tarball
+      get_url:
+        url: http://archive.apache.org/dist/qpid/broker-j/7.0.4/binaries/apache-qpid-broker-j-7.0.4-bin.tar.gz
+        dest: "./apache-qpid-broker-j-7.0.4-bin.tar.gz"
+        checksum: sha256:9a696bfa56968021dd49d7089f88a2d3e6b70c0acc8eaf704a4331131d661453
+      register: qpid_tarball
+    - name: download nimrod tarball
+      get_url:
+        url: "{{ nimrod_url }}"
+        dest: "./{{ nimrod_package }}.tar"
+        checksum: "sha256:{{ nimrod_sha256 }}"
+      register: nimrod_tarball
+    - name: download nimrod agent
+      get_url:
+        url: "{{ agent_url }}"
+        dest: "./{{ agent_name }}"
+        checksum: "sha256:{{ agent_sha256 }}"
+      register: nimrod_agent
+
+- hosts: 'nord3'
   become: no
   vars:
     #root_dir: /opt/nimrod-embedded
@@ -7,30 +35,51 @@
     tar_dir: "{{ root_dir }}/usr/local/tar"
     java_home: "{{ root_dir }}/lib/jvm/jdk-10.0.1"
     qpid_home: "{{ root_dir }}/opt/qpid-broker/7.0.4"
+    nimrod_home: "{{ root_dir }}/opt/{{ nimrod_package }}"
   tasks:
     - name: create folders
       file: path={{ item }} state=directory
       loop: ["{{ root_dir }}", "{{ bin_dir }}", "{{ tar_dir }}", "{{ java_home }}", "{{ qpid_home }}"]
-    - name: 'download openjdk tarball'
-      get_url:
-        url: https://download.java.net/java/GA/jdk10/10.0.1/fb4372174a714e6b8c52526dc134031e/10//openjdk-10.0.1_linux-x64_bin.tar.gz
-        dest: "{{ tar_dir }}/openjdk-10.0.1_linux-x64_bin.tar.gz"
-        checksum: sha1:1377697996cad66def4f6627d13a031a26af9b7c
-    - name: 'extract openjdk tarball'
+    - name: extract openjdk tarball
       unarchive:
-        src: "{{ tar_dir }}/openjdk-10.0.1_linux-x64_bin.tar.gz"
+        src: "{{ hostvars.localhost.openjdk_tarball.dest }}"
         dest: "{{ java_home }}/../"
-        remote_src: yes
+        remote_src: no
         creates: "{{ java_home }}/bin/java"
-    - name: 'download qpid tarball'
-      get_url:
-        url: http://archive.apache.org/dist/qpid/broker-j/7.0.4/binaries/apache-qpid-broker-j-7.0.4-bin.tar.gz
-        dest: "{{ tar_dir }}/apache-qpid-broker-j-7.0.4-bin.tar.gz"
-        checksum: sha1:114d033415363821a54def92c43f911675cab5a3
-      register: qpid_tarball
-    - name: 'extract qpid tarball'
+    - name: extract qpid tarball
       unarchive:
-        src: "{{ qpid_tarball.dest }}"
+        src: "{{ hostvars.localhost.qpid_tarball.dest }}"
         dest: "{{ root_dir }}/opt"
-        remote_src: yes
+        remote_src: no
         creates: "{{ qpid_home }}/bin/qpid-server"
+    - name: extract nimrod tarball
+      unarchive:
+        src: "{{ hostvars.localhost.nimrod_tarball.dest }}"
+        dest: "{{ root_dir }}/opt"
+        remote_src: no
+        creates: "{{ nimrod_home }}/bin/nimrod"
+    - name: make agent directory
+      file:
+        path: "{{ nimrod_home }}/agents"
+        state: directory
+    - name: copy agent binary
+      copy:
+        src: "{{ hostvars.localhost.nimrod_agent.dest }}"
+        dest: "{{ nimrod_home }}/agents/{{ agent_name }}"
+        mode: 0755
+    - block:
+        - name: create module path (lmod)
+          file: path={{ module_path_lmod }} state=directory
+        - name: generate modulefile (lmod)
+          template:
+            src: nimrod-embedded.lua.j2
+            dest: "{{ module_path_lmod }}/{{ nimrod_version }}.lua"
+      when: module_path_lmod is defined
+    - block:
+        - name: create module path (modules)
+          file: path={{ module_path_modules }} state=directory
+        - name: generate modulefile (modules)
+          template:
+            src: nimrod-embedded.j2
+            dest: "{{ module_path_modules }}/{{ nimrod_version }}"
+      when: module_path_modules is defined

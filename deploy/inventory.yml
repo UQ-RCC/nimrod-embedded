@@ -1,17 +1,28 @@
 all:
   vars:
-    nimrod_version: "0.8.6"
+    nimrod_version: 1.0.0
     nimrod_package: "nimrod-{{ nimrod_version }}"
-    
-    # Change these to where the binaries are
-    nimrod_tarball: "/path/to/{{ nimrod_package }}.tar"
+
+    nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar"
+    nimrod_sha256: 2bf576902d4d05f88b31fe2c2ba8d99bea0619fffe770dd22bce93ce929f8ce6
+
     nimrun_binary: "/path/to/nimrun"
-    agent_binary: "/path/to/bbb/agent-x86_64-pc-linux-musl"
+
+    agent_version: 1.0.0
+    agent_platform: x86_64-pc-linux-musl
+    agent_name: "agent-{{ agent_platform }}-{{ agent_version }}"
+
+    agent_url: "https://github.com/UQ-RCC/nimrodg-agent/releases/download/{{ agent_version }}/{{ agent_name }}"
+    agent_sha256: 1c9e7d21f42c54a821ef147e0c4c86e56aadfcfa6137357d6d984b21c4c01ac2
 
     # Just in case we lose the binaries
-    nimrod_commit_hash: 470521e5914867d758c2abcdc3d3c5ca770397ed
-    nimrod_agent_commit_hash: f1e8174eb4dcc3a5b51a14811d12287cbf02aff9
+    #nimrod_commit_hash: 470521e5914867d758c2abcdc3d3c5ca770397ed
+    #nimrod_agent_commit_hash: f1e8174eb4dcc3a5b51a14811d12287cbf02aff9
   hosts:
     tinaroo:
-      root_dir: /gpfs1/sw7/RCC/NimrodG/embedded
-      module_path: /sw7/Modules/RCC/local/embedded-nimrod
+      root_dir: /sw7/RCC/NimrodG/embedded
+      module_path_lmod: /sw7/Modules/RCC/local/embedded-nimrod
+    nord3:
+      ansible_ssh_host: nord1
+      root_dir: /home/bscXX/bscXXXXX/nimrod-embedded
+      module_path_modules: "{{ root_dir }}/etc/modulefiles/embedded-nimrod"
