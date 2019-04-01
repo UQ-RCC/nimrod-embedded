@@ -1,2 +1,6 @@
 **/build
 **/deploy/*.retry
+**/deploy/*.tar
+**/deploy/*.tar.*
+**/deploy/agent-*
+**/nimrun/cmake-*
