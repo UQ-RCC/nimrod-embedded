@@ -61,7 +61,7 @@ int get_ip_addrs(std::vector<std::string>& addrs)
 	for(size_t i = 0; i < naddr; ++i)
 		addrs.push_back(inet_ntoa(reinterpret_cast<struct sockaddr_in *>(&reqs[i].ifr_addr)->sin_addr));
 
-	return static_cast<size_t>(naddr);
+	return static_cast<int>(naddr);
 }
 
 struct tcp_entry
