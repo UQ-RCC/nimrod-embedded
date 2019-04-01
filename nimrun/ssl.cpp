@@ -119,7 +119,7 @@ evp_pkey_ptr create_pkey(size_t bits) noexcept
 	if(EVP_PKEY_assign_RSA(pkey.get(), rsa.get()) != 1)
 		return nullptr;
 	
-	rsa.release(); /* NB: Doesn't leak. */
+	(void)rsa.release(); /* NB: Doesn't leak. */
 
 	return pkey;
 }
@@ -182,8 +182,8 @@ x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string
 			if(!sk_GENERAL_NAME_push(gens.get(), gen.get()))
 				return nullptr;
 
-			gen.release();
-			ia5.release();
+			(void)gen.release();
+			(void)ia5.release();
 		}
 
 		if(!X509_add1_ext_i2d(cert.get(), NID_subject_alt_name, gens.get(), 0, 0))

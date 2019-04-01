@@ -4,19 +4,7 @@ project(nimrun)
 enable_language(C CXX)
 
 find_package(Threads REQUIRED)
-find_package(OpenSSL 1.0.1 REQUIRED) # Needed by PBS
-find_library(PBS_LIBRARIES pbs /opt/pbs/lib /opt/pbspro-14.1.0/lib)
-
-if(NOT PBS_LIBRARIES)
-	message(FATAL_ERROR "Can't find PBS")
-else()
-	message(STATUS "Found PBS at ${PBS_LIBRARIES}")
-endif()
-
-get_filename_component(PBS_ROOT ${PBS_LIBRARIES} DIRECTORY)
-set(PBS_ROOT ${PBS_ROOT}/../)
-get_filename_component(PBS_ROOT ${PBS_ROOT} ABSOLUTE)
-message(STATUS "PBS installed at ${PBS_ROOT}")
+find_package(OpenSSL 1.0.1 REQUIRED)
 
 execute_process(
 	COMMAND git describe --tags --always
@@ -39,6 +27,7 @@ add_executable(nimrun
 	ip.cpp
 	ssl.cpp
 	pbs.cpp
+	minipbs.hpp
 	qpid.cpp
 	nimrun.hpp
 	json.hpp
@@ -59,9 +48,7 @@ target_link_libraries(nimrun OpenSSL::Crypto)
 target_link_libraries(nimrun OpenSSL::SSL)
 
 target_link_libraries(nimrun stdc++fs)
-
-target_include_directories(nimrun PRIVATE "${PBS_ROOT}/include")
-target_link_libraries(nimrun ${PBS_LIBRARIES})
+target_link_libraries(nimrun dl)
 
 target_include_directories(nimrun PRIVATE "${NIMRUN_GENERATED_INCLUDE_DIR}")
 
