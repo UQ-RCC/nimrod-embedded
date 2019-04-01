@@ -85,7 +85,7 @@ struct pbs_info
 	node_map_type nodes;
 };
 
-pbs_info get_pbs_info(const char *job);
+pbs_info get_pbs_info(const char *server, const char *job);
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);

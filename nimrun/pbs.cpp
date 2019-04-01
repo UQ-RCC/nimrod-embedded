@@ -114,10 +114,10 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-pbs_info get_pbs_info(const char *job)
+pbs_info get_pbs_info(const char *server, const char *job)
 {
 	/* Now actually connect to MoM */
-	pbs_ptr pbs(pbs_connect(nullptr));
+	pbs_ptr pbs(pbs_connect(const_cast<char*>(server)));
 	if(!pbs)
 		throw make_pbs_exception(pbs_errno);
 

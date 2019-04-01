@@ -311,7 +311,7 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 
 	{
-		pbs_info pbs = get_pbs_info(args.jobid);
+		pbs_info pbs = get_pbs_info(args.pbsserver, args.jobid);
 		sysinfo.pbs_jobid = args.jobid;
 		sysinfo.pbs_ompthreads = pbs.ompthreads;
 		sysinfo.pbs_server = std::move(pbs.server);
