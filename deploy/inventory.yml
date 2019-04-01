@@ -24,5 +24,5 @@ all:
       module_path_lmod: /sw7/Modules/RCC/local/embedded-nimrod
     nord3:
       ansible_ssh_host: nord1
-      root_dir: /home/bscXX/bscXXXXX/nimrod-embedded
+      root_dir: /home/bsc19/bsc19175/nimrod-embedded
       module_path_modules: "{{ root_dir }}/etc/modulefiles/embedded-nimrod"

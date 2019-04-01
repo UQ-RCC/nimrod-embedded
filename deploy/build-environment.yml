@@ -32,14 +32,13 @@
   vars:
     #root_dir: /opt/nimrod-embedded
     bin_dir: "{{ root_dir }}/bin"
-    tar_dir: "{{ root_dir }}/usr/local/tar"
     java_home: "{{ root_dir }}/lib/jvm/jdk-10.0.1"
     qpid_home: "{{ root_dir }}/opt/qpid-broker/7.0.4"
     nimrod_home: "{{ root_dir }}/opt/{{ nimrod_package }}"
   tasks:
     - name: create folders
       file: path={{ item }} state=directory
-      loop: ["{{ root_dir }}", "{{ bin_dir }}", "{{ tar_dir }}", "{{ java_home }}", "{{ qpid_home }}"]
+      loop: ["{{ root_dir }}", "{{ bin_dir }}", "{{ java_home }}", "{{ qpid_home }}"]
     - name: extract openjdk tarball
       unarchive:
         src: "{{ hostvars.localhost.openjdk_tarball.dest }}"
