@@ -66,11 +66,11 @@ struct nimrun_system_info {
 	std::string hostname;
 	std::string simple_hostname;
 
-
+	batch_info_t batch_info;
 	std::string pbs_jobid;
-	size_t pbs_ompthreads;
+	//size_t pbs_ompthreads;
 	//std::string pbs_server;
-	node_map_type pbs_nodes;
+	//node_map_type pbs_nodes;
 
 	resource_vector_type nimrod_resources;
 
@@ -405,19 +405,16 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 
 	{
-		pbs_info pbs = get_pbs_info(args.pbsserver, args.jobid);
+		sysinfo.batch_info = get_pbs_info(args.pbsserver, args.jobid);
 		sysinfo.pbs_jobid = args.jobid;
-		sysinfo.pbs_ompthreads = pbs.ompthreads;
-		//sysinfo.pbs_server = std::move(pbs.server);
-		sysinfo.pbs_nodes = std::move(pbs.nodes);
 
-		for(const auto& e : sysinfo.pbs_nodes)
+		for(const auto& e : sysinfo.batch_info.nodes)
 		{
 			nimrun_resource_info ri;
 			ri.name = e.first;
 			ri.uri = "ssh://";
 			ri.uri.append(ri.name);
-			ri.num_agents = e.second / pbs.ompthreads;
+			ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
 			ri.local = e.first == sysinfo.simple_hostname;
 			sysinfo.nimrod_resources.emplace_back(std::move(ri));
 		}
@@ -426,15 +423,6 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 			return a.name < b.name;
 		});
 	}
-//
-//	if(sysinfo.pbs_server == "flm1" || sysinfo.pbs_server == "flashmgr2")
-//		sysinfo.cluster = cluster_t::rcc_flashlite;
-//	else if(sysinfo.pbs_server == "tinmgmr1")
-//		sysinfo.cluster = cluster_t::rcc_tinaroo;
-//	else if(sysinfo.pbs_server == "awongmgmr1")
-//		sysinfo.cluster = cluster_t::rcc_awoonga;
-//	else
-//		sysinfo.cluster = cluster_t::unknown;
 
 	sysinfo.openssh = locate_openssh();
 	if(sysinfo.openssh.empty())
@@ -486,7 +474,7 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 	}
 
 	json nodes = json::object();
-	for(const auto& it : si.pbs_nodes)
+	for(const auto& it : si.batch_info.nodes)
 		nodes[it.first] = it.second;
 
 	const char *clustername;
@@ -512,9 +500,10 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		{"hostname", si.uname.nodename},
 		{"simple_hostname", si.simple_hostname},
 		{"pbs_jobid", si.pbs_jobid},
-		{"pbs_ompthreads", si.pbs_ompthreads},
-		//{"pbs_server", si.pbs_server},
-		{"pbs_nodes", nodes},
+		{"batch_info", {
+			{"ompthreads", si.batch_info.ompthreads},
+			{"nodes", nodes}
+		}},
 		{"outdir", si.outdir},
 		{"nimrod_resources", res},
 		{"openssh", si.openssh},

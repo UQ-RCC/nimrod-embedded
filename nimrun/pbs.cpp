@@ -55,7 +55,7 @@ public:
 
 static pbs_error_category_t pbs_error_category;
 
-static void read_resource_attribute(const struct attrl *a, pbs_info& pi)
+static void read_resource_attribute(const struct attrl *a, batch_info_t& pi)
 {
 	/* Can't use it here, it's always 1 no matter what we do. */
 	// if(!strcmp("ompthreads", a->resource))
@@ -67,7 +67,7 @@ static void read_resource_attribute(const struct attrl *a, pbs_info& pi)
 	if(!strcmp("select", a->resource))
 	{
 		constexpr const char *ompneedle = "ompthreads=";
-		constexpr size_t nsize = strlen(ompneedle);
+		size_t nsize = strlen(ompneedle);
 		const char *ompstart = strstr(a->value, ompneedle);
 		if(ompstart == nullptr)
 			return;
@@ -77,7 +77,7 @@ static void read_resource_attribute(const struct attrl *a, pbs_info& pi)
 	}
 }
 
-static void read_exechost_attribute(const struct attrl *a, pbs_info& pi)
+static void read_exechost_attribute(const struct attrl *a, batch_info_t& pi)
 {
 	/* tn109c/5*4+tn111c/3*4+tn119a/5*4+tn223b/3*41 */
 	for(const char *s = a->value;;)
@@ -104,17 +104,12 @@ static void read_exechost_attribute(const struct attrl *a, pbs_info& pi)
 	}
 }
 
-static void read_server_attribute(const struct attrl *a, pbs_info& pi)
-{
-	pi.server = a->value;
-}
-
 static std::system_error make_pbs_exception(int err)
 {
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-pbs_info get_pbs_info(const char *server, const char *job)
+batch_info_t get_pbs_info(const char *server, const char *job)
 {
 	/* Now actually connect to MoM */
 	pbs_ptr pbs(pbs_connect(const_cast<char*>(server)));
@@ -142,7 +137,7 @@ pbs_info get_pbs_info(const char *server, const char *job)
 	// for(struct attrl *a = aa; a != nullptr; a = a->next)
 	// 	fprintf(stderr, "name = %s, resource = %s, value = %s\n", a->name, a->resource, a->value);
 
-	pbs_info pi;
+	batch_info_t pi;
 	pi.ompthreads = 0;
 	for(struct attrl *a = jobStatus->attribs; a ; a = a->next)
 	{
@@ -150,8 +145,6 @@ pbs_info get_pbs_info(const char *server, const char *job)
 			read_resource_attribute(a, pi);
 		else if(!strcmp(a->name, ATTR_exechost))
 			read_exechost_attribute(a, pi);
-		else if(!strcmp(a->name, ATTR_server))
-			read_server_attribute(a, pi);
 
 		//fprintf(stderr, "  name = %s, resource = %s, value = %s\n", a->name, a->resource, a->value);
 	}

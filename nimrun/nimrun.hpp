@@ -78,14 +78,13 @@ auto make_protector(D& deleter)
 
 /* pbs.cpp */
 using node_map_type = std::unordered_map<std::string, size_t>;
-struct pbs_info
+struct batch_info_t
 {
 	size_t ompthreads;
-	std::string server;
 	node_map_type nodes;
 };
 
-pbs_info get_pbs_info(const char *server, const char *job);
+batch_info_t get_pbs_info(const char *server, const char *job);
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);
