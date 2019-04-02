@@ -68,9 +68,6 @@ struct nimrun_system_info {
 
 	batch_info_t batch_info;
 	std::string pbs_jobid;
-	//size_t pbs_ompthreads;
-	//std::string pbs_server;
-	//node_map_type pbs_nodes;
 
 	resource_vector_type nimrod_resources;
 
@@ -404,25 +401,23 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 
+	sysinfo.batch_info = get_pbs_info(args.pbsserver, args.jobid);
+	sysinfo.pbs_jobid = args.jobid;
+
+	for(const auto& e : sysinfo.batch_info.nodes)
 	{
-		sysinfo.batch_info = get_pbs_info(args.pbsserver, args.jobid);
-		sysinfo.pbs_jobid = args.jobid;
-
-		for(const auto& e : sysinfo.batch_info.nodes)
-		{
-			nimrun_resource_info ri;
-			ri.name = e.first;
-			ri.uri = "ssh://";
-			ri.uri.append(ri.name);
-			ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
-			ri.local = e.first == sysinfo.simple_hostname;
-			sysinfo.nimrod_resources.emplace_back(std::move(ri));
-		}
-
-		std::sort(sysinfo.nimrod_resources.begin(), sysinfo.nimrod_resources.end(), [](const auto& a, const auto& b){
-			return a.name < b.name;
-		});
+		nimrun_resource_info ri;
+		ri.name = e.first;
+		ri.uri = "ssh://";
+		ri.uri.append(ri.name);
+		ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
+		ri.local = e.first == sysinfo.simple_hostname;
+		sysinfo.nimrod_resources.emplace_back(std::move(ri));
 	}
+
+	std::sort(sysinfo.nimrod_resources.begin(), sysinfo.nimrod_resources.end(), [](const auto& a, const auto& b){
+		return a.name < b.name;
+	});
 
 	sysinfo.openssh = locate_openssh();
 	if(sysinfo.openssh.empty())
