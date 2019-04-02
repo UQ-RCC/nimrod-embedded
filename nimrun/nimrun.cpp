@@ -37,11 +37,12 @@ SOFTWARE.
 
 namespace fs = std::filesystem;
 
-enum class rcc_cluster_t
+enum class cluster_t
 {
-	tinaroo,
-	awoonga,
-	flashlite,
+	rcc_tinaroo,
+	rcc_awoonga,
+	rcc_flashlite,
+	bsc_nord3,
 	unknown
 };
 
@@ -58,16 +59,18 @@ using node_map_type = std::unordered_map<std::string, size_t>;
 using resource_vector_type = std::vector<nimrun_resource_info>;
 
 struct nimrun_system_info {
+	cluster_t cluster;
+	struct utsname uname;
+
 	std::string username;
 	std::string hostname;
 	std::string simple_hostname;
 
+
 	std::string pbs_jobid;
 	size_t pbs_ompthreads;
-	std::string pbs_server;
+	//std::string pbs_server;
 	node_map_type pbs_nodes;
-
-	rcc_cluster_t rcc_cluster;
 
 	resource_vector_type nimrod_resources;
 
@@ -293,9 +296,104 @@ static fs::path locate_openssh()
 	return "";
 }
 
+static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
+{
+	/* This one's easy. */
+	const char *bsc_machine = getenv("BSC_MACHINE");
+	if(bsc_machine && !strcmp(bsc_machine, "nord3"))
+		return cluster_t::bsc_nord3;
+
+	/* Tinaroo, Awoonga, and Flashlite are a little trickier. */
+	struct utsname _utsname;
+	memset(&_utsname, 0, sizeof(_utsname));
+	uname(&_utsname);
+
+	if(utsname)
+		*utsname = _utsname;
+
+	/* We only care about the first part. */
+	char *dot = strstr(_utsname.nodename, ".");
+	if(dot != nullptr)
+		*dot = '\0';
+
+	{ /* Check for Tinaroo */
+		unsigned int num;
+		char c;
+
+		/* Management nodes. */
+		if(sscanf(_utsname.nodename, "tinmgmr%u", &num) == 1)
+			return cluster_t::rcc_tinaroo;
+
+		if(sscanf(_utsname.nodename, "tinmgr%u", &num) == 1)
+			return cluster_t::rcc_tinaroo;
+
+		/* Login nodes. */
+		if(sscanf(_utsname.nodename, "tinaroo%u", &num) == 1)
+			return cluster_t::rcc_tinaroo;
+
+		/* Compute nodes. */
+		if(sscanf(_utsname.nodename, "tn%u%c", &num, &c) == 2)
+			return cluster_t::rcc_tinaroo;
+
+		/* I have no idea what these nodes are. */
+		if(sscanf(_utsname.nodename, "ngw%u", &num) == 1)
+			return cluster_t::rcc_tinaroo;
+	}
+
+	{ /* Check for Awoonga */
+		unsigned int num;
+		char c;
+
+		/* Management nodes. */
+		if(sscanf(_utsname.nodename, "awongmgmr%u", &num) == 1)
+			return cluster_t::rcc_awoonga;
+
+		if(sscanf(_utsname.nodename, "awongmgr%u", &num) == 1)
+			return cluster_t::rcc_awoonga;
+
+		/* Login nodes. */
+		if(sscanf(_utsname.nodename, "awoonga%u", &num) == 1)
+			return cluster_t::rcc_awoonga;
+
+		/* Compute nodes. */
+		if(sscanf(_utsname.nodename, "aw%u%c", &num, &c) == 2)
+			return cluster_t::rcc_awoonga;
+
+		if(sscanf(_utsname.nodename, "aw%u", &num) == 1)
+			return cluster_t::rcc_awoonga;
+	}
+
+	{ /* Check for FlashLite */
+		unsigned int num;
+		char c;
+
+		/* Management nodes. */
+		if(sscanf(_utsname.nodename, "flm%u", &num) == 1)
+			return cluster_t::rcc_flashlite;
+
+		if(sscanf(_utsname.nodename, "flashmgr%u", &num) == 1)
+			return cluster_t::rcc_flashlite;
+
+		/* Login nodes. */
+		if(sscanf(_utsname.nodename, "flashlite%u", &num) == 1)
+			return cluster_t::rcc_flashlite;
+
+		/* Compute nodes. */
+		if(sscanf(_utsname.nodename, "fl%u\n", &num) == 1)
+			return cluster_t::rcc_flashlite;
+
+		if(sscanf(_utsname.nodename, "flvc%u\n", &num) == 1)
+			return cluster_t::rcc_flashlite;
+	}
+
+	return cluster_t::unknown;
+}
+
 static nimrun_system_info gather_system_info(const nimrun_args& args)
 {
 	nimrun_system_info sysinfo;
+
+	sysinfo.cluster = detect_cluster(&sysinfo.uname);
 
 	errno = 0;
 	struct passwd *passwd = getpwuid(geteuid());
@@ -303,18 +401,14 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 		throw make_posix_exception(errno);
 
 	sysinfo.username = passwd->pw_name;
-
-	struct utsname utsname;
-	memset(&utsname, 0, sizeof(utsname));
-	uname(&utsname);
-	sysinfo.hostname = utsname.nodename;
+	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 
 	{
 		pbs_info pbs = get_pbs_info(args.pbsserver, args.jobid);
 		sysinfo.pbs_jobid = args.jobid;
 		sysinfo.pbs_ompthreads = pbs.ompthreads;
-		sysinfo.pbs_server = std::move(pbs.server);
+		//sysinfo.pbs_server = std::move(pbs.server);
 		sysinfo.pbs_nodes = std::move(pbs.nodes);
 
 		for(const auto& e : sysinfo.pbs_nodes)
@@ -332,15 +426,15 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 			return a.name < b.name;
 		});
 	}
-
-	if(sysinfo.pbs_server == "flm1" || sysinfo.pbs_server == "flashmgr2")
-		sysinfo.rcc_cluster = rcc_cluster_t::flashlite;
-	else if(sysinfo.pbs_server == "tinmgmr1")
-		sysinfo.rcc_cluster = rcc_cluster_t::tinaroo;
-	else if(sysinfo.pbs_server == "awongmgmr1")
-		sysinfo.rcc_cluster = rcc_cluster_t::awoonga;
-	else
-		sysinfo.rcc_cluster = rcc_cluster_t::unknown;
+//
+//	if(sysinfo.pbs_server == "flm1" || sysinfo.pbs_server == "flashmgr2")
+//		sysinfo.cluster = cluster_t::rcc_flashlite;
+//	else if(sysinfo.pbs_server == "tinmgmr1")
+//		sysinfo.cluster = cluster_t::rcc_tinaroo;
+//	else if(sysinfo.pbs_server == "awongmgmr1")
+//		sysinfo.cluster = cluster_t::rcc_awoonga;
+//	else
+//		sysinfo.cluster = cluster_t::unknown;
 
 	sysinfo.openssh = locate_openssh();
 	if(sysinfo.openssh.empty())
@@ -396,24 +490,32 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		nodes[it.first] = it.second;
 
 	const char *clustername;
-	switch(si.rcc_cluster)
+	switch(si.cluster)
 	{
-		case rcc_cluster_t::flashlite: clustername = "flashlite"; break;
-		case rcc_cluster_t::tinaroo: clustername = "tinaroo"; break;
-		case rcc_cluster_t::awoonga: clustername = "awoonga"; break;
+		case cluster_t::rcc_flashlite: clustername = "rcc_flashlite"; break;
+		case cluster_t::rcc_tinaroo: clustername = "rcc_tinaroo"; break;
+		case cluster_t::rcc_awoonga: clustername = "rcc_awoonga"; break;
+		case cluster_t::bsc_nord3: clustername = "bsc_nord3"; break;
 		default: clustername = "unknown"; break;
 	}
 
 	json j = {
+		{"cluster", clustername},
+		{"uname", {
+			{"sysname", si.uname.sysname},
+			{"nodename", si.uname.nodename},
+			{"release", si.uname.release},
+			{"version", si.uname.version},
+			{"machine", si.uname.machine},
+		}},
 		{"username", si.username},
-		{"hostname", si.hostname},
+		{"hostname", si.uname.nodename},
 		{"simple_hostname", si.simple_hostname},
 		{"pbs_jobid", si.pbs_jobid},
 		{"pbs_ompthreads", si.pbs_ompthreads},
-		{"pbs_server", si.pbs_server},
+		//{"pbs_server", si.pbs_server},
 		{"pbs_nodes", nodes},
 		{"outdir", si.outdir},
-		{"rcc_cluster", clustername},
 		{"nimrod_resources", res},
 		{"openssh", si.openssh},
 		{"nimrod_home", si.nimrod_home},
@@ -455,7 +557,7 @@ int main(int argc, char **argv)
 	if(args.debug >= log_level_debug)
 		dump_system_info_json(nimrun);
 
-	if(sysinfo.rcc_cluster == rcc_cluster_t::unknown)
+	if(sysinfo.cluster == cluster_t::unknown)
 	{
 		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
 	}
