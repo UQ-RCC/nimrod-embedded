@@ -26,27 +26,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 #include <cstring>
-#include <dlfcn.h>
-//#include <pbs_error.h>
-//#include <pbs_ifl.h>
 #include "minipbs.hpp"
 #include "nimrun.hpp"
 
-static PFNPBS_CONNECT			pbs_connect = nullptr;
-static PFNPBS_DISCONNECT		pbs_disconnect = nullptr;
-static PFNPBS_STATJOB			pbs_statjob = nullptr;
-static PFNPBS_STATFREE			pbs_statfree = nullptr;
-static PFNPBSE_TO_TXT			pbse_to_txt = nullptr;
-static int						*_pbs_errno = nullptr;
-
-#define pbs_errno (*_pbs_errno)
-
-struct dl_deleter
-{
-	using pointer = void*;
-	void operator()(pointer p) noexcept { dlclose(p); }
-};
-using dl_ptr = std::unique_ptr<void, dl_deleter>;
+using namespace minipbs;
 
 struct pbs_deleter
 {
@@ -124,46 +107,8 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-static dl_ptr minipbs_init() noexcept
-{
-	dl_ptr hpbs(dlopen("libpbs.so", RTLD_NOW));
-	if(!hpbs)
-		return nullptr;
-
-	if(!(pbs_connect = reinterpret_cast<PFNPBS_CONNECT>(dlsym(hpbs.get(), "pbs_connect"))))
-		return nullptr;
-
-	if(!(pbs_disconnect = reinterpret_cast<PFNPBS_DISCONNECT>(dlsym(hpbs.get(), "pbs_disconnect"))))
-		return nullptr;
-
-	if(!(pbs_statjob = reinterpret_cast<PFNPBS_STATJOB>(dlsym(hpbs.get(), "pbs_statjob"))))
-		return nullptr;
-
-	if(!(pbs_statfree = reinterpret_cast<PFNPBS_STATFREE>(dlsym(hpbs.get(), "pbs_statfree"))))
-		return nullptr;
-
-	if(!(pbse_to_txt = reinterpret_cast<PFNPBSE_TO_TXT>(dlsym(hpbs.get(), "pbse_to_txt"))))
-		return nullptr;
-
-	if(!(_pbs_errno = reinterpret_cast<int*>(dlsym(hpbs.get(), "pbs_errno"))))
-	{
-		PFN__PBS_ERRNO_LOCATION __pbs_errno_location = reinterpret_cast<PFN__PBS_ERRNO_LOCATION>(dlsym(hpbs.get(), "__pbs_errno_location"));
-		if(!__pbs_errno_location)
-			return nullptr;
-
-		if(!(_pbs_errno = __pbs_errno_location()))
-			return nullptr;
-	}
-
-	return hpbs;
-}
-
 static batch_info_t get_pbs_info(const char *server, const char *job)
 {
-	dl_ptr pbs(minipbs_init());
-	if(!pbs)
-		throw std::runtime_error("can't load PBS library");
-
 	/* Now actually connect to MoM */
 	pbs_ptr conn(pbs_connect(const_cast<char*>(server)));
 	if(!conn)
@@ -184,11 +129,6 @@ static batch_info_t get_pbs_info(const char *server, const char *job)
 		throw make_pbs_exception(pbs_errno);
 	}
 
-	//fprintf(stderr, "name = %s, text = %s\n", jobStatus->name, jobStatus->text);
-
-	// for(struct attrl *a = aa; a != nullptr; a = a->next)
-	// 	fprintf(stderr, "name = %s, resource = %s, value = %s\n", a->name, a->resource, a->value);
-
 	batch_info_t pi;
 	pi.ompthreads = 0;
 	for(struct attrl *a = jobStatus->attribs; a ; a = a->next)
@@ -197,8 +137,6 @@ static batch_info_t get_pbs_info(const char *server, const char *job)
 			read_resource_attribute(a, pi);
 		else if(!strcmp(a->name, ATTR_exechost))
 			read_exechost_attribute(a, pi);
-
-		//fprintf(stderr, "  name = %s, resource = %s, value = %s\n", a->name, a->resource, a->value);
 	}
 
 	/* Default to 1 if unspecified. */
@@ -208,7 +146,16 @@ static batch_info_t get_pbs_info(const char *server, const char *job)
 	return pi;
 }
 
-batch_info_t get_batch_info_pbs(const nimrun_args& args)
+batch_info_t get_batch_info_rcc(const nimrun_args& args)
 {
+	/* Try load it from the system first. If that fails, load it from where
+	 * we know it is. */
+	dl_ptr pbs(minipbs_loadlibrary("libpbs.so"));
+	if(!pbs)
+		pbs.reset(minipbs_loadlibrary("/opt/pbs/lib/libpbs.so"));
+
+	if(!pbs)
+		throw std::runtime_error("can't load PBS library");
+
 	return get_pbs_info(args.pbsserver, args.jobid);
 }

@@ -48,9 +48,9 @@ enum class cluster_t : size_t
 
 /* These must match above. */
 static batch_info_proc_t cluster_info_procs[] = {
-	get_batch_info_pbs,
-	get_batch_info_pbs,
-	get_batch_info_pbs,
+	get_batch_info_rcc,
+	get_batch_info_rcc,
+	get_batch_info_rcc,
 	nullptr,
 	nullptr
 };

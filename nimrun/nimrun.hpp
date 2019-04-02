@@ -33,6 +33,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <cstdio>
 #include <unistd.h>
+#include <dlfcn.h>
 
 namespace fs = std::filesystem;
 
@@ -59,6 +60,13 @@ struct fd_deleter
 };
 
 using fd_ptr = std::unique_ptr<int, fd_deleter>;
+
+struct dl_deleter
+{
+	using pointer = void*;
+	void operator()(pointer p) noexcept { dlclose(p); }
+};
+using dl_ptr = std::unique_ptr<void, dl_deleter>;
 
 struct stdio_deleter
 {
@@ -100,8 +108,8 @@ struct batch_info_t
 
 using batch_info_proc_t = batch_info_t(*)(const nimrun_args& args);
 
-/* pbs.cpp */
-batch_info_t get_batch_info_pbs(const nimrun_args& args);
+/* rcc.cpp */
+batch_info_t get_batch_info_rcc(const nimrun_args& args);
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);

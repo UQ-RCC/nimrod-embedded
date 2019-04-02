@@ -26,8 +26,11 @@ add_executable(nimrun
 	nimrun.cpp
 	ip.cpp
 	ssl.cpp
-	pbs.cpp
+
+	rcc.cpp
 	minipbs.hpp
+	minipbs.cpp
+
 	qpid.cpp
 	nimrun.hpp
 	json.hpp

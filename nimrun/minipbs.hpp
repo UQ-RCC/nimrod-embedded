@@ -10,12 +10,12 @@
 #ifndef _MINIPBS_HPP
 #define _MINIPBS_HPP
 
+namespace minipbs {
 /* pbs_error.h */
 enum { PBSE_ = 15000, PBSE_NONE = 0, PBSE_PERM = PBSE_ + 7 };
 
 /* pbs_ifl.h */
 constexpr static const char *ATTR_l = "Resource_List";
-constexpr static const char *ATTR_server = "server";
 constexpr static const char *ATTR_exechost = "exec_host";
 
 enum batch_op { _DUMMY };
@@ -35,11 +35,16 @@ struct batch_status {
 	char 				*text;
 };
 
-using PFNPBS_CONNECT			= int(*)(char*);
-using PFNPBS_DISCONNECT			= int(*)(int);
-using PFNPBS_STATJOB			= struct batch_status*(*)(int, char*, struct attrl *, char*);
-using PFNPBS_STATFREE			= void(*)(struct batch_status*);
-using PFNPBSE_TO_TXT			= char*(*)(int);
-using PFN__PBS_ERRNO_LOCATION	= int*(*)();
+int		pbs_connect(char *server) noexcept;
+int		pbs_disconnect(int connect) noexcept;
+struct	batch_status *pbs_statjob(int connect, char *id, struct attrl *attrib, char *extend) noexcept;
+void	pbs_statfree(struct batch_status *status) noexcept;
+char	*pbse_to_txt(int e) noexcept;
+
+extern int pbs_errno;
+
+
+void *minipbs_loadlibrary(const char *libpath) noexcept;
+}
 
 #endif /* _MINIPBS_HPP */
