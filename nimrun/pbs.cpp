@@ -26,16 +26,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 #include <cstring>
-#include <pbs_error.h>
-#include <pbs_ifl.h>
+#include <dlfcn.h>
+//#include <pbs_error.h>
+//#include <pbs_ifl.h>
+#include "minipbs.hpp"
 #include "nimrun.hpp"
+
+static PFNPBS_CONNECT			pbs_connect = nullptr;
+static PFNPBS_DISCONNECT		pbs_disconnect = nullptr;
+static PFNPBS_STATJOB			pbs_statjob = nullptr;
+static PFNPBS_STATFREE			pbs_statfree = nullptr;
+static PFNPBSE_TO_TXT			pbse_to_txt = nullptr;
+static int						*_pbs_errno = nullptr;
+
+#define pbs_errno (*_pbs_errno)
+
+struct dl_deleter
+{
+	using pointer = void*;
+	void operator()(pointer p) noexcept { dlclose(p); }
+};
+using dl_ptr = std::unique_ptr<void, dl_deleter>;
 
 struct pbs_deleter
 {
 	using pointer = file_desc; /* Same semantics */
 	void operator()(pointer p) { pbs_disconnect(p); }
 };
-
 using pbs_ptr = std::unique_ptr<int, pbs_deleter>;
 
 struct pbs_batch_status_deleter
@@ -43,7 +60,6 @@ struct pbs_batch_status_deleter
 	using pointer = struct batch_status*;
 	void operator()(pointer p) { pbs_statfree(p); }
 };
-
 using pbs_batch_status_ptr = std::unique_ptr<struct batch_status, pbs_batch_status_deleter>;
 
 class pbs_error_category_t : public std::error_category
@@ -55,7 +71,7 @@ public:
 
 static pbs_error_category_t pbs_error_category;
 
-static void read_resource_attribute(const struct attrl *a, batch_info_t& pi)
+static void read_resource_attribute(const struct attrl *a, batch_info_t& pi) noexcept
 {
 	/* Can't use it here, it's always 1 no matter what we do. */
 	// if(!strcmp("ompthreads", a->resource))
@@ -67,12 +83,11 @@ static void read_resource_attribute(const struct attrl *a, batch_info_t& pi)
 	if(!strcmp("select", a->resource))
 	{
 		constexpr const char *ompneedle = "ompthreads=";
-		size_t nsize = strlen(ompneedle);
 		const char *ompstart = strstr(a->value, ompneedle);
 		if(ompstart == nullptr)
 			return;
 
-		pi.ompthreads = static_cast<size_t>(std::atoll(ompstart + nsize));
+		pi.ompthreads = static_cast<size_t>(std::atoll(ompstart + strlen(ompneedle)));
 		return;
 	}
 }
@@ -109,19 +124,56 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
+static dl_ptr minipbs_init() noexcept
+{
+	dl_ptr hpbs(dlopen("libpbs.so", RTLD_NOW));
+	if(!hpbs)
+		return nullptr;
+
+	if(!(pbs_connect = reinterpret_cast<PFNPBS_CONNECT>(dlsym(hpbs.get(), "pbs_connect"))))
+		return nullptr;
+
+	if(!(pbs_disconnect = reinterpret_cast<PFNPBS_DISCONNECT>(dlsym(hpbs.get(), "pbs_disconnect"))))
+		return nullptr;
+
+	if(!(pbs_statjob = reinterpret_cast<PFNPBS_STATJOB>(dlsym(hpbs.get(), "pbs_statjob"))))
+		return nullptr;
+
+	if(!(pbs_statfree = reinterpret_cast<PFNPBS_STATFREE>(dlsym(hpbs.get(), "pbs_statfree"))))
+		return nullptr;
+
+	if(!(pbse_to_txt = reinterpret_cast<PFNPBSE_TO_TXT>(dlsym(hpbs.get(), "pbse_to_txt"))))
+		return nullptr;
+
+	if(!(_pbs_errno = reinterpret_cast<int*>(dlsym(hpbs.get(), "pbs_errno"))))
+	{
+		PFN__PBS_ERRNO_LOCATION __pbs_errno_location = reinterpret_cast<PFN__PBS_ERRNO_LOCATION>(dlsym(hpbs.get(), "__pbs_errno_location"));
+		if(!__pbs_errno_location)
+			return nullptr;
+
+		if(!(_pbs_errno = __pbs_errno_location()))
+			return nullptr;
+	}
+
+	return hpbs;
+}
+
 static batch_info_t get_pbs_info(const char *server, const char *job)
 {
-	/* Now actually connect to MoM */
-	pbs_ptr pbs(pbs_connect(const_cast<char*>(server)));
+	dl_ptr pbs(minipbs_init());
 	if(!pbs)
+		throw std::runtime_error("can't load PBS library");
+
+	/* Now actually connect to MoM */
+	pbs_ptr conn(pbs_connect(const_cast<char*>(server)));
+	if(!conn)
 		throw make_pbs_exception(pbs_errno);
 
 	struct attrl aa[] = {
 		{&aa[1],	const_cast<char*>(ATTR_l),			nullptr, const_cast<char*>("")},
-		{&aa[2],	const_cast<char*>(ATTR_server),		nullptr, const_cast<char*>("")},
 		{nullptr,	const_cast<char*>(ATTR_exechost),	nullptr, const_cast<char*>("")},
 	};
-	pbs_batch_status_ptr jobStatus(pbs_statjob(pbs.get(), const_cast<char*>(job), aa, const_cast<char*>("")));
+	pbs_batch_status_ptr jobStatus(pbs_statjob(conn.get(), const_cast<char*>(job), aa, const_cast<char*>("")));
 
  	if(!jobStatus)
 	{
