@@ -51,7 +51,7 @@ static batch_info_proc_t cluster_info_procs[] = {
 	get_batch_info_rcc,
 	get_batch_info_rcc,
 	get_batch_info_rcc,
-	nullptr,
+	get_batch_info_bsc,
 	nullptr
 };
 

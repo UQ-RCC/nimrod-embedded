@@ -31,6 +31,8 @@ add_executable(nimrun
 	minipbs.hpp
 	minipbs.cpp
 
+	bsc.cpp
+
 	qpid.cpp
 	nimrun.hpp
 	json.hpp

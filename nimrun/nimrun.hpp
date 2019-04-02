@@ -111,6 +111,9 @@ using batch_info_proc_t = batch_info_t(*)(const nimrun_args& args);
 /* rcc.cpp */
 batch_info_t get_batch_info_rcc(const nimrun_args& args);
 
+/* bsc.cpp */
+batch_info_t get_batch_info_bsc(const nimrun_args& args);
+
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);
 std::vector<uint16_t> get_listening_ports(pid_t pid);
