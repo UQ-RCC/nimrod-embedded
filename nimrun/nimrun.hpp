@@ -76,7 +76,21 @@ auto make_protector(D& deleter)
 	return ptr_type(&deleter, [](D* d) { (*d)(); });
 }
 
-/* pbs.cpp */
+/* args.cpp */
+struct nimrun_args {
+	uint32_t debug;
+	const char *planfile;
+	const char *jobid;
+	const char *pbsserver;
+	const char *tmpdir;
+	const char *outdir;
+	uint16_t qpid_management_port;
+	const char *qpid_home;
+	const char *java_home;
+	const char *nimrod_home;
+};
+int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
+
 using node_map_type = std::unordered_map<std::string, size_t>;
 struct batch_info_t
 {
@@ -84,7 +98,10 @@ struct batch_info_t
 	node_map_type nodes;
 };
 
-batch_info_t get_pbs_info(const char *server, const char *job);
+using batch_info_proc_t = batch_info_t(*)(const nimrun_args& args);
+
+/* pbs.cpp */
+batch_info_t get_batch_info_pbs(const nimrun_args& args);
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);
@@ -119,21 +136,6 @@ int write_pkcs12(EVP_PKEY *pkey, X509 *cert, const char *name, const char *pass,
 /* qpid.cpp */
 std::string generate_qpid_json(const fs::path& qpid_work, const char *user, const char *pass, const fs::path& cert_path, const char *cert_pass, uint16_t amqpPort, uint16_t managementPort);
 pid_t launch_qpid(const fs::path& java, const fs::path& qpid_home, const fs::path& qpid_work, const fs::path& icp);
-
-/* args.cpp */
-struct nimrun_args {
-	uint32_t debug;
-	const char *planfile;
-	const char *jobid;
-	const char *pbsserver;
-	const char *tmpdir;
-	const char *outdir;
-	uint16_t qpid_management_port;
-	const char *qpid_home;
-	const char *java_home;
-	const char *nimrod_home;
-};
-int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
 
 /* nimrod.cpp */
 std::string build_nimrod_ini(const fs::path& dbpath);

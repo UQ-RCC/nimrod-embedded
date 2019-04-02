@@ -37,13 +37,22 @@ SOFTWARE.
 
 namespace fs = std::filesystem;
 
-enum class cluster_t
+enum class cluster_t : size_t
 {
-	rcc_tinaroo,
+	rcc_tinaroo = 0,
 	rcc_awoonga,
 	rcc_flashlite,
 	bsc_nord3,
 	unknown
+};
+
+/* These must match above. */
+static batch_info_proc_t cluster_info_procs[] = {
+	get_batch_info_pbs,
+	get_batch_info_pbs,
+	get_batch_info_pbs,
+	nullptr,
+	nullptr
 };
 
 struct nimrun_resource_info
@@ -362,7 +371,6 @@ static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
 
 	{ /* Check for FlashLite */
 		unsigned int num;
-		char c;
 
 		/* Management nodes. */
 		if(sscanf(_utsname.nodename, "flm%u", &num) == 1)
@@ -376,10 +384,10 @@ static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
 			return cluster_t::rcc_flashlite;
 
 		/* Compute nodes. */
-		if(sscanf(_utsname.nodename, "fl%u\n", &num) == 1)
+		if(sscanf(_utsname.nodename, "fl%u", &num) == 1)
 			return cluster_t::rcc_flashlite;
 
-		if(sscanf(_utsname.nodename, "flvc%u\n", &num) == 1)
+		if(sscanf(_utsname.nodename, "flvc%u", &num) == 1)
 			return cluster_t::rcc_flashlite;
 	}
 
@@ -401,18 +409,22 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 
-	sysinfo.batch_info = get_pbs_info(args.pbsserver, args.jobid);
-	sysinfo.pbs_jobid = args.jobid;
-
-	for(const auto& e : sysinfo.batch_info.nodes)
+	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(sysinfo.cluster)];
+	if(infoproc != nullptr)
 	{
-		nimrun_resource_info ri;
-		ri.name = e.first;
-		ri.uri = "ssh://";
-		ri.uri.append(ri.name);
-		ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
-		ri.local = e.first == sysinfo.simple_hostname;
-		sysinfo.nimrod_resources.emplace_back(std::move(ri));
+		sysinfo.batch_info = infoproc(args);
+		sysinfo.pbs_jobid = args.jobid;
+
+		for(const auto& e : sysinfo.batch_info.nodes)
+		{
+			nimrun_resource_info ri;
+			ri.name = e.first;
+			ri.uri = "ssh://";
+			ri.uri.append(ri.name);
+			ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
+			ri.local = e.first == sysinfo.simple_hostname;
+			sysinfo.nimrod_resources.emplace_back(std::move(ri));
+		}
 	}
 
 	std::sort(sysinfo.nimrod_resources.begin(), sysinfo.nimrod_resources.end(), [](const auto& a, const auto& b){

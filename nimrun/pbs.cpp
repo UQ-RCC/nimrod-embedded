@@ -109,7 +109,7 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-batch_info_t get_pbs_info(const char *server, const char *job)
+static batch_info_t get_pbs_info(const char *server, const char *job)
 {
 	/* Now actually connect to MoM */
 	pbs_ptr pbs(pbs_connect(const_cast<char*>(server)));
@@ -154,4 +154,9 @@ batch_info_t get_pbs_info(const char *server, const char *job)
 		pi.ompthreads = 1;
 
 	return pi;
+}
+
+batch_info_t get_batch_info_pbs(const nimrun_args& args)
+{
+	return get_pbs_info(args.pbsserver, args.jobid);
 }
