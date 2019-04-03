@@ -302,7 +302,7 @@ static fs::path locate_openssh()
 	return "";
 }
 
-static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
+static cluster_t detect_cluster(struct utsname *utsname) noexcept
 {
 	/* This one's easy. */
 	const char *bsc_machine = getenv("BSC_MACHINE");
@@ -310,12 +310,7 @@ static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
 		return cluster_t::bsc_nord3;
 
 	/* Tinaroo, Awoonga, and Flashlite are a little trickier. */
-	struct utsname _utsname;
-	memset(&_utsname, 0, sizeof(_utsname));
-	uname(&_utsname);
-
-	if(utsname)
-		*utsname = _utsname;
+	struct utsname _utsname = *utsname;
 
 	/* We only care about the first part. */
 	char *dot = strstr(_utsname.nodename, ".");
@@ -397,6 +392,9 @@ static cluster_t detect_cluster(struct utsname *utsname = nullptr) noexcept
 static nimrun_system_info gather_system_info(const nimrun_args& args)
 {
 	nimrun_system_info sysinfo;
+
+	memset(&sysinfo.uname, 0, sizeof(sysinfo.uname));
+	uname(&sysinfo.uname);
 
 	sysinfo.cluster = detect_cluster(&sysinfo.uname);
 

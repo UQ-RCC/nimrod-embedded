@@ -8,6 +8,8 @@ batch_info_t get_batch_info_bsc(const nimrun_args& args)
 	/* LSF is a tad nicer than PBS in this regard. */
 	const char *lsb_mcpu_hosts = getenv("LSB_MCPU_HOSTS");
 
+	/* "s03r2b55 2 s03r2b27 2 s04r2b21 2 " */
+
 	char hostname[64]; /* Will never be longer than this. */
 	size_t count;
 
