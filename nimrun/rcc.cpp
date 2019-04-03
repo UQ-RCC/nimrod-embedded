@@ -107,10 +107,10 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-static batch_info_t get_pbs_info(const char *server, const char *job)
+static batch_info_t get_pbs_info(const char *job)
 {
 	/* Now actually connect to MoM */
-	pbs_ptr conn(pbs_connect(const_cast<char*>(server)));
+	pbs_ptr conn(pbs_connect(nullptr));
 	if(!conn)
 		throw make_pbs_exception(pbs_errno);
 
@@ -157,5 +157,5 @@ batch_info_t get_batch_info_rcc(const nimrun_args& args)
 	if(!pbs)
 		throw std::runtime_error("can't load PBS library");
 
-	return get_pbs_info(args.pbsserver, args.jobid);
+	return get_pbs_info(args.jobid);
 }

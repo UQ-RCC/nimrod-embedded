@@ -89,7 +89,6 @@ struct nimrun_args {
 	uint32_t debug;
 	const char *planfile;
 	const char *jobid;
-	const char *pbsserver;
 	const char *tmpdir;
 	const char *outdir;
 	uint16_t qpid_management_port;

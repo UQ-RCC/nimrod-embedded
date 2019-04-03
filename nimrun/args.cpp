@@ -34,19 +34,17 @@ SOFTWARE.
 
 #define ARGDEF_DEBUG        		'd'
 #define ARGDEF_JOBID        		'j'
-#define ARGDEF_PBSSERVER			301
-#define ARGDEF_TMPDIR				302
-#define ARGDEF_OUTDIR				303
-#define ARGDEF_QPID_MANAGEMENT_PORT	304
-#define ARGDEF_QPID_HOME			305
-#define ARGDEF_JAVA_HOME			306
-#define ARGDEF_NIMROD_HOME			307
+#define ARGDEF_TMPDIR				301
+#define ARGDEF_OUTDIR				302
+#define ARGDEF_QPID_MANAGEMENT_PORT	303
+#define ARGDEF_QPID_HOME			304
+#define ARGDEF_JAVA_HOME			305
+#define ARGDEF_NIMROD_HOME			306
 #define ARGDEF_HELP         		'h'
 
 static struct parg_option argdefs[] = {
 	{"debug",					PARG_NOARG,		nullptr,	ARGDEF_DEBUG},
 	{"jobid",					PARG_REQARG,	nullptr,	ARGDEF_JOBID},
-	{"pbs-server",				PARG_REQARG,	nullptr,	ARGDEF_PBSSERVER},
 	{"tmpdir",					PARG_REQARG,	nullptr,	ARGDEF_TMPDIR},
 	{"outdir",					PARG_REQARG,	nullptr,	ARGDEF_OUTDIR},
 	{"qpid-management-port",	PARG_REQARG,	nullptr,	ARGDEF_QPID_MANAGEMENT_PORT},
@@ -62,8 +60,6 @@ static const char *USAGE_OPTIONS2 =
 "                          Enable Debugging\n"
 "  --jobid\n"
 "                          The PBS Job ID. If unspecified, use $PBS_JOBID\n"
-"  --pbs-server\n"
-"                          The PBS connection string. See `man pbs_connect` for more information\n"
 "  --tmpdir\n"
 "                          The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir\n"
@@ -81,7 +77,6 @@ static const char *USAGE_OPTIONS2 =
 static const char *USAGE_OPTIONS = 
 "  -d, --debug             Enable Debugging\n"
 "  --jobid                 The PBS Job ID. If unspecified, use $PBS_JOBID\n"
-"  --pbs-server            The PBS connection string. See `man pbs_connect` for more information\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir                The output directory to use. If unspecified, use $PBS_O_WORKDIR\n"
 "  --qpid-management-port  Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
@@ -122,10 +117,6 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 
 			case ARGDEF_JOBID:
 				args->jobid = ps.optarg;
-				break;
-
-			case ARGDEF_PBSSERVER:
-				args->pbsserver = ps.optarg;
 				break;
 
 			case ARGDEF_TMPDIR:
