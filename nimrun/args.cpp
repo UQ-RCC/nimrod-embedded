@@ -59,7 +59,7 @@ static const char *USAGE_OPTIONS2 =
 "  --tmpdir\n"
 "                          The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir\n"
-"                          The output directory to use. If unspecified, use $PBS_O_WORKDIR\n"
+"                          The output directory to use. If unspecified, use the one provided by the batch system\n"
 "  --qpid-management-port\n"
 "                          Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
 "  --qpid-home\n"
@@ -73,7 +73,7 @@ static const char *USAGE_OPTIONS2 =
 static const char *USAGE_OPTIONS = 
 "  -d, --debug             Enable Debugging\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
-"  --outdir                The output directory to use. If unspecified, use $PBS_O_WORKDIR\n"
+"  --outdir                The output directory to use. If unspecified, use the one provided by the batch system\n"
 "  --qpid-management-port  Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
 "  --qpid-home             The Qpid home directory. If unspecified, use $QPID_HOME\n"
 "  --java-home             The Java home directory. If unspecified, use $JAVA_HOME\n"
@@ -156,12 +156,6 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 	if((args->tmpdir == nullptr && (args->tmpdir = getenv("TMPDIR")) == nullptr) || args->tmpdir[0] == '\0')
 	{
 		fprintf(stderr, "TMPDIR isn't set. Please use the --tmpdir option.\n");
-		return 1;
-	}
-
-	if((args->outdir == nullptr && (args->outdir = getenv("PBS_O_WORKDIR")) == nullptr) || args->outdir[0] == '\0')
-	{
-		fprintf(stderr, "PBS_O_WORKDIR isn't set. Please use the --outdir option.\n");
 		return 1;
 	}
 

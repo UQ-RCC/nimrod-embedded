@@ -5,9 +5,11 @@ batch_info_t get_batch_info_bsc(const nimrun_args& args)
 {
 	batch_info_t bi;
 
-	const char *lsb_jobid = getenv("LSB_JOBID");
-	if(lsb_jobid == nullptr)
+	if(!(bi.job_id = getenv("LSB_JOBID")))
 		throw std::runtime_error("LSB_JOBID isn't set");
+
+	if(!(bi.outdir = getenv("LS_SUBCWD")))
+		throw std::runtime_error("LS_SUBCWD isn't set");
 
 	/* LSF is a tad nicer than PBS in this regard. */
 	const char *lsb_mcpu_hosts = getenv("LSB_MCPU_HOSTS");
@@ -38,8 +40,6 @@ batch_info_t get_batch_info_bsc(const nimrun_args& args)
 	const char *_ompthreads = getenv("OMPTHREADS");
 	if(_ompthreads != nullptr)
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
-
-	bi.job_id = lsb_jobid;
 
 	return bi;
 }

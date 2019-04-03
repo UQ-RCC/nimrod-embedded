@@ -100,7 +100,8 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 using node_map_type = std::unordered_map<std::string, size_t>;
 struct batch_info_t
 {
-	std::string job_id;
+	const char *job_id;
+	const char *outdir;
 	size_t ompthreads;
 	node_map_type nodes;
 };

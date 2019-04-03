@@ -433,7 +433,7 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 
 	sysinfo.nimrod_home = args.nimrod_home;
 	sysinfo.tmpdir = args.tmpdir;
-	sysinfo.outdir = args.outdir;
+	sysinfo.outdir = args.outdir ? args.outdir : sysinfo.batch_info.outdir;
 	sysinfo.java_home = args.java_home;
 	sysinfo.java = sysinfo.java_home / "bin" / "java";
 	sysinfo.qpid_home = args.qpid_home;
@@ -505,7 +505,8 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		{"batch_info", {
 			{"ompthreads", si.batch_info.ompthreads},
 			{"nodes", nodes},
-			{"job_id", si.batch_info.job_id}
+			{"job_id", si.batch_info.job_id},
+			{"outdir", si.batch_info.outdir}
 		}},
 		{"outdir", si.outdir},
 		{"nimrod_resources", res},

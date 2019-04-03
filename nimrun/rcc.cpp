@@ -107,7 +107,7 @@ static std::system_error make_pbs_exception(int err)
 	return std::system_error(std::error_code(err, pbs_error_category));
 }
 
-static batch_info_t get_pbs_info(const char *job)
+static void get_pbs_info(const char *job, batch_info_t& pi)
 {
 	/* Now actually connect to MoM */
 	pbs_ptr conn(pbs_connect(nullptr));
@@ -129,7 +129,6 @@ static batch_info_t get_pbs_info(const char *job)
 		throw make_pbs_exception(pbs_errno);
 	}
 
-	batch_info_t pi;
 	pi.ompthreads = 0;
 	for(struct attrl *a = jobStatus->attribs; a ; a = a->next)
 	{
@@ -144,14 +143,17 @@ static batch_info_t get_pbs_info(const char *job)
 		pi.ompthreads = 1;
 
 	pi.job_id = job;
-	return pi;
 }
 
 batch_info_t get_batch_info_rcc(const nimrun_args& args)
 {
-	const char *pbs_jobid = getenv("PBS_JOBID");
-	if(pbs_jobid == nullptr)
+	batch_info_t bi;
+
+	if(!(bi.job_id = getenv("PBS_JOBID")))
 		throw std::runtime_error("PBS_JOBID isn't set");
+
+	if(!(bi.outdir = getenv("PBS_O_WORKDIR")))
+		throw std::runtime_error("PBS_O_WORKDIR isn't set");
 
 	/* Try load it from the system first. If that fails, load it from where
 	 * we know it is. */
@@ -162,5 +164,6 @@ batch_info_t get_batch_info_rcc(const nimrun_args& args)
 	if(!pbs)
 		throw std::runtime_error("can't load PBS library");
 
-	return get_pbs_info(pbs_jobid);
+	get_pbs_info(bi.job_id, bi);
+	return bi;
 }
