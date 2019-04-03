@@ -76,7 +76,6 @@ struct nimrun_system_info {
 	std::string simple_hostname;
 
 	batch_info_t batch_info;
-	std::string pbs_jobid;
 
 	resource_vector_type nimrod_resources;
 
@@ -411,7 +410,6 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	if(infoproc != nullptr)
 	{
 		sysinfo.batch_info = infoproc(args);
-		sysinfo.pbs_jobid = args.jobid;
 
 		for(const auto& e : sysinfo.batch_info.nodes)
 		{
@@ -504,10 +502,10 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		{"username", si.username},
 		{"hostname", si.uname.nodename},
 		{"simple_hostname", si.simple_hostname},
-		{"pbs_jobid", si.pbs_jobid},
 		{"batch_info", {
 			{"ompthreads", si.batch_info.ompthreads},
-			{"nodes", nodes}
+			{"nodes", nodes},
+			{"job_id", si.batch_info.job_id}
 		}},
 		{"outdir", si.outdir},
 		{"nimrod_resources", res},

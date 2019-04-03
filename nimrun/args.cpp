@@ -33,7 +33,6 @@ SOFTWARE.
 #include "nimrun.hpp"
 
 #define ARGDEF_DEBUG        		'd'
-#define ARGDEF_JOBID        		'j'
 #define ARGDEF_TMPDIR				301
 #define ARGDEF_OUTDIR				302
 #define ARGDEF_QPID_MANAGEMENT_PORT	303
@@ -44,7 +43,6 @@ SOFTWARE.
 
 static struct parg_option argdefs[] = {
 	{"debug",					PARG_NOARG,		nullptr,	ARGDEF_DEBUG},
-	{"jobid",					PARG_REQARG,	nullptr,	ARGDEF_JOBID},
 	{"tmpdir",					PARG_REQARG,	nullptr,	ARGDEF_TMPDIR},
 	{"outdir",					PARG_REQARG,	nullptr,	ARGDEF_OUTDIR},
 	{"qpid-management-port",	PARG_REQARG,	nullptr,	ARGDEF_QPID_MANAGEMENT_PORT},
@@ -58,8 +56,6 @@ static struct parg_option argdefs[] = {
 static const char *USAGE_OPTIONS2 = 
 "  -d, --debug\n"
 "                          Enable Debugging\n"
-"  --jobid\n"
-"                          The PBS Job ID. If unspecified, use $PBS_JOBID\n"
 "  --tmpdir\n"
 "                          The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir\n"
@@ -76,7 +72,6 @@ static const char *USAGE_OPTIONS2 =
 
 static const char *USAGE_OPTIONS = 
 "  -d, --debug             Enable Debugging\n"
-"  --jobid                 The PBS Job ID. If unspecified, use $PBS_JOBID\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir                The output directory to use. If unspecified, use $PBS_O_WORKDIR\n"
 "  --qpid-management-port  Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
@@ -113,10 +108,6 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 
 			case ARGDEF_DEBUG:
 				++args->debug;
-				break;
-
-			case ARGDEF_JOBID:
-				args->jobid = ps.optarg;
 				break;
 
 			case ARGDEF_TMPDIR:
@@ -160,12 +151,6 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 	if(args->planfile == nullptr)
 	{
 		return usage(2, out, argv[0]);
-	}
-
-	if((args->jobid == nullptr && (args->jobid = getenv("PBS_JOBID")) == nullptr) || args->jobid[0] == '\0')
-	{
-		fprintf(stderr, "PBS_JOBID isn't set. Please use the --jobid option.\n");
-		return 1;
 	}
 
 	if((args->tmpdir == nullptr && (args->tmpdir = getenv("TMPDIR")) == nullptr) || args->tmpdir[0] == '\0')

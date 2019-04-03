@@ -143,11 +143,16 @@ static batch_info_t get_pbs_info(const char *job)
 	if(pi.ompthreads <= 0)
 		pi.ompthreads = 1;
 
+	pi.job_id = job;
 	return pi;
 }
 
 batch_info_t get_batch_info_rcc(const nimrun_args& args)
 {
+	const char *pbs_jobid = getenv("PBS_JOBID");
+	if(pbs_jobid == nullptr)
+		throw std::runtime_error("PBS_JOBID isn't set");
+
 	/* Try load it from the system first. If that fails, load it from where
 	 * we know it is. */
 	dl_ptr pbs(minipbs_loadlibrary("libpbs.so"));
@@ -157,5 +162,5 @@ batch_info_t get_batch_info_rcc(const nimrun_args& args)
 	if(!pbs)
 		throw std::runtime_error("can't load PBS library");
 
-	return get_pbs_info(args.jobid);
+	return get_pbs_info(pbs_jobid);
 }
