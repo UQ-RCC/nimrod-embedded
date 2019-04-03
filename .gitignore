@@ -1,4 +1,5 @@
 **/build
+**/build-*
 **/deploy/*.retry
 **/deploy/*.tar
 **/deploy/*.tar.*

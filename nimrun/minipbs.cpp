@@ -1,3 +1,9 @@
+/*
+ *         OpenPBS (Portable Batch System) v2.3 Software License
+ *
+ * Copyright (c) 1999-2000 Veridian Information Solutions, Inc.
+ * All rights reserved.
+ */
 #include "minipbs.hpp"
 
 using namespace minipbs;
