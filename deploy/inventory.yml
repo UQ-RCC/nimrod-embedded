@@ -8,21 +8,22 @@ all:
 
     nimrun_binary: "/path/to/nimrun"
 
-    agent_version: 1.0.0
+    agent_version: 1.1.1
     agent_platform: x86_64-pc-linux-musl
     agent_name: "agent-{{ agent_platform }}-{{ agent_version }}"
 
     agent_url: "https://github.com/UQ-RCC/nimrodg-agent/releases/download/{{ agent_version }}/{{ agent_name }}"
-    agent_sha256: 1c9e7d21f42c54a821ef147e0c4c86e56aadfcfa6137357d6d984b21c4c01ac2
+    agent_sha256: ede1a9b56342f8c91952e0ce6bc6a0fea5b0e1ab8cb954edf28203fa98743f1a
 
     # Just in case we lose the binaries
     #nimrod_commit_hash: 470521e5914867d758c2abcdc3d3c5ca770397ed
     #nimrod_agent_commit_hash: f1e8174eb4dcc3a5b51a14811d12287cbf02aff9
   hosts:
     tinaroo:
+      ansible_ssh_host: tinaroo.rcc.uq.edu.au
       root_dir: /sw7/RCC/NimrodG/embedded
       module_path_lmod: /sw7/Modules/RCC/local/embedded-nimrod
     nord3:
-      ansible_ssh_host: nord1
+      ansible_ssh_host: nord1.bsc.es
       root_dir: /home/bsc19/bsc19175/nimrod-embedded
       module_path_modules: "{{ root_dir }}/etc/modulefiles/embedded-nimrod"
