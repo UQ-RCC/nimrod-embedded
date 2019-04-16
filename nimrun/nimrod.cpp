@@ -129,6 +129,7 @@ pid_t nimcli::setup_init(const fs::path& setupini)
 	m_args.resize(m_basecount);
 	m_args.push_back("setup");
 	m_args.push_back("init");
+	m_args.push_back("--skip-system");
 	m_args.push_back(setupini.c_str());
 	m_args.push_back(nullptr);
 	return fork_and_reset();
