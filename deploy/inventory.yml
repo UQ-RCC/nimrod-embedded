@@ -1,23 +1,12 @@
 all:
   vars:
-    nimrod_version: 1.0.0
+    nimrod_version: 1.1.0
     nimrod_package: "nimrod-{{ nimrod_version }}"
 
-    nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar"
-    nimrod_sha256: 2bf576902d4d05f88b31fe2c2ba8d99bea0619fffe770dd22bce93ce929f8ce6
+    nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar.gz"
+    nimrod_sha256: 1237953f5e8faff631e49e5907e3c9a36b43efdd6dc1192c484a6a8c1372a9cd
 
     nimrun_binary: "/path/to/nimrun"
-
-    agent_version: 1.1.1
-    agent_platform: x86_64-pc-linux-musl
-    agent_name: "agent-{{ agent_platform }}-{{ agent_version }}"
-
-    agent_url: "https://github.com/UQ-RCC/nimrodg-agent/releases/download/{{ agent_version }}/{{ agent_name }}"
-    agent_sha256: ede1a9b56342f8c91952e0ce6bc6a0fea5b0e1ab8cb954edf28203fa98743f1a
-
-    # Just in case we lose the binaries
-    #nimrod_commit_hash: 470521e5914867d758c2abcdc3d3c5ca770397ed
-    #nimrod_agent_commit_hash: f1e8174eb4dcc3a5b51a14811d12287cbf02aff9
   hosts:
     tinaroo:
       ansible_ssh_host: tinaroo.rcc.uq.edu.au

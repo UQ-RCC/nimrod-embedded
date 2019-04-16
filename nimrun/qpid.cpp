@@ -167,7 +167,6 @@ pid_t launch_qpid(const fs::path& java, const fs::path& qpid_home, const fs::pat
 		"-cp", classpath.c_str(),
 		"-XX:+HeapDumpOnOutOfMemoryError",
 		"-Xmx512m", "-XX:MaxDirectMemorySize=1536m",
-		"--add-modules", "java.xml.bind",
 		qhome.c_str(),
 		qwork.c_str(),
 		"-Dderby.stream.error.file=/dev/null",

@@ -4,15 +4,15 @@
   tasks:
     - name: download openjdk tarball
       get_url:
-        url: https://download.java.net/java/GA/jdk10/10.0.1/fb4372174a714e6b8c52526dc134031e/10//openjdk-10.0.1_linux-x64_bin.tar.gz
-        dest: "./openjdk-10.0.1_linux-x64_bin.tar.gz"
-        checksum: sha256:0b14aaecd5323457bd15dc7798d08181ad04bad4156e55387ed714190912a9ce
+        url: https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz
+        dest: "./openjdk-11.0.2_linux-x64_bin.tar.gz"
+        checksum: sha256:99be79935354f5c0df1ad293620ea36d13f48ec3ea870c838f20c504c9668b57
       register: openjdk_tarball
     - name: download qpid tarball
       get_url:
-        url: http://archive.apache.org/dist/qpid/broker-j/7.0.4/binaries/apache-qpid-broker-j-7.0.4-bin.tar.gz
-        dest: "./apache-qpid-broker-j-7.0.4-bin.tar.gz"
-        checksum: sha256:9a696bfa56968021dd49d7089f88a2d3e6b70c0acc8eaf704a4331131d661453
+        url: http://archive.apache.org/dist/qpid/broker-j/7.1.2/binaries/apache-qpid-broker-j-7.1.2-bin.tar.gz
+        dest: "./apache-qpid-broker-j-7.1.2-bin.tar.gz"
+        checksum: sha256:b1c5f6e6ee2fd1e93fb40210b6d45d114f439c8b3eda40e3c9149ee75ce50ee9
       register: qpid_tarball
     - name: download nimrod tarball
       get_url:
@@ -20,20 +20,14 @@
         dest: "./{{ nimrod_package }}.tar"
         checksum: "sha256:{{ nimrod_sha256 }}"
       register: nimrod_tarball
-    - name: download nimrod agent
-      get_url:
-        url: "{{ agent_url }}"
-        dest: "./{{ agent_name }}"
-        checksum: "sha256:{{ agent_sha256 }}"
-      register: nimrod_agent
 
-- hosts: 'nord3'
+- hosts: 'tinaroo_test'
   become: no
   vars:
     #root_dir: /opt/nimrod-embedded
     bin_dir: "{{ root_dir }}/bin"
-    java_home: "{{ root_dir }}/lib/jvm/jdk-10.0.1"
-    qpid_home: "{{ root_dir }}/opt/qpid-broker/7.0.4"
+    java_home: "{{ root_dir }}/lib/jvm/jdk-11.0.2"
+    qpid_home: "{{ root_dir }}/opt/qpid-broker/7.1.2"
     nimrod_home: "{{ root_dir }}/opt/{{ nimrod_package }}"
   tasks:
     - name: create folders
@@ -57,15 +51,6 @@
         dest: "{{ root_dir }}/opt"
         remote_src: no
         creates: "{{ nimrod_home }}/bin/nimrod"
-    - name: make agent directory
-      file:
-        path: "{{ nimrod_home }}/agents"
-        state: directory
-    - name: copy agent binary
-      copy:
-        src: "{{ hostvars.localhost.nimrod_agent.dest }}"
-        dest: "{{ nimrod_home }}/agents/{{ agent_name }}"
-        mode: 0755
     - block:
         - name: create module path (lmod)
           file: path={{ module_path_lmod }} state=directory
