@@ -69,3 +69,22 @@ std::system_error make_posix_exception(int err)
 {
 	return std::system_error(err, std::generic_category());
 }
+
+pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept
+{
+	pid_t pid = fork();
+	if(pid != 0)
+		return pid;
+
+	/* Force us into a new process group so Bash can't SIGINT us. */
+	setpgid(0, 0);
+
+	if(fdin >= 0)
+	{
+		dup2(fdin, STDIN_FILENO);
+		close(fdin);
+	}
+
+	execvp(path, argv);
+	_exit(1);
+}

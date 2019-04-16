@@ -176,14 +176,5 @@ pid_t launch_qpid(const fs::path& java, const fs::path& qpid_home, const fs::pat
 		nullptr
 	};
 
-	pid_t pid = fork();
-	if(pid == 0)
-	{
-		/* Force us into a new process group so Bash can't SIGINT us. */
-		setpgid(0, 0);
-		execvp(argv[0], const_cast<char * const *>(argv));
-		_exit(1);
-	}
-
-	return pid;
+	return spawn_process(argv[0], const_cast<char * const *>(argv), -1);
 }

@@ -179,5 +179,6 @@ void write_file(const fs::path& path, const std::string& s);
 std::string generate_random_password(size_t length);
 fs::path getenv_path(const char *name);
 std::system_error make_posix_exception(int err);
+pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept;
 
 #endif /* _NIMRUN_HPP */

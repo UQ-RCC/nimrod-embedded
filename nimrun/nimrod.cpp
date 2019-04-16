@@ -233,16 +233,8 @@ pid_t nimcli::fork_and_reset() noexcept
 
 pid_t nimcli::fork_and_reset(int fdin) noexcept
 {
-	pid_t pid = fork();
-	if(pid == 0)
-	{
-		/* Force us into a new process group so Bash can't SIGINT us. */
-		setpgid(0, 0);
-		dup2(fdin, STDIN_FILENO);
-		close(fdin);
-		execvp(m_args[0], const_cast<char * const *>(m_args.data()));
-		_exit(1);
-	}
+	pid_t pid = spawn_process(m_args[0], const_cast<char * const *>(m_args.data()), fdin);
+
 	m_args.resize(m_basecount);
 
 	if(fdin != m_devnull.get())
