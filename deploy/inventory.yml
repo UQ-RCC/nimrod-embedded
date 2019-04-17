@@ -10,7 +10,7 @@ all:
   hosts:
     tinaroo:
       ansible_ssh_host: tinaroo.rcc.uq.edu.au
-      root_dir: /sw7/RCC/NimrodG/embedded
+      root_dir: "/sw7/RCC/NimrodG/embedded-{{ nimrod_version }}"
       module_path_lmod: /sw7/Modules/RCC/local/embedded-nimrod
     nord3:
       ansible_ssh_host: nord1.bsc.es
