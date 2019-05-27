@@ -34,6 +34,7 @@ enum class cluster_t : size_t
 	rcc_tinaroo = 0,
 	rcc_awoonga,
 	rcc_flashlite,
+	qbi_wiener,
 	bsc_nord3,
 	unknown
 };
@@ -43,6 +44,7 @@ static batch_info_proc_t cluster_info_procs[] = {
 	get_batch_info_rcc,
 	get_batch_info_rcc,
 	get_batch_info_rcc,
+	get_batch_info_wiener,
 	get_batch_info_bsc,
 	nullptr
 };
@@ -377,6 +379,17 @@ static cluster_t detect_cluster(struct utsname *utsname) noexcept
 			return cluster_t::rcc_flashlite;
 	}
 
+	{ /* Check for Wiener */
+		unsigned int n1, n2;
+
+		/* Comute nodes */
+		if(sscanf(_utsname.nodename, "gpunode-%u-%u", &n1, &n2) == 2)
+			return cluster_t::qbi_wiener;
+
+		/* Login nodes */
+		if(strcmp("wiener", _utsname.nodename) == 0)
+			return cluster_t::qbi_wiener;
+	}
 	return cluster_t::unknown;
 }
 

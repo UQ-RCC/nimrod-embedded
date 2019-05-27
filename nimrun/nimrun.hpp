@@ -103,6 +103,9 @@ using batch_info_proc_t = batch_info_t(*)(const nimrun_args& args);
 /* rcc.cpp */
 batch_info_t get_batch_info_rcc(const nimrun_args& args);
 
+/* wiener.cpp */
+batch_info_t get_batch_info_wiener(const nimrun_args& args);
+
 /* bsc.cpp */
 batch_info_t get_batch_info_bsc(const nimrun_args& args);
 
