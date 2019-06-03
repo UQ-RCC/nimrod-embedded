@@ -38,6 +38,23 @@ void write_file(const fs::path& path, const std::string& s)
 	f.write(s.c_str(), s.size());
 }
 
+std::unique_ptr<char[]> read_file(const char *path, size_t& size)
+{
+	std::ifstream f;
+	f.exceptions(std::ios::failbit | std::ios::badbit);
+	f.open(path, std::ios::binary);
+
+	f.seekg(0, std::ios::end);
+	size_t _size = static_cast<size_t>(f.tellg());
+	f.seekg(0, std::ios::beg);
+
+	std::unique_ptr<char[]> buf = std::make_unique<char[]>(_size);
+	f.read(buf.get(), _size);
+
+	size = _size;
+	return buf;
+}
+
 std::string generate_random_password(size_t length)
 {
 	/* NB: Keeping this alphanumeric deliberately. */

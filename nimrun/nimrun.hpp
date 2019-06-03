@@ -176,6 +176,8 @@ private:
 /* utils.cpp */
 void write_file(const fs::path& path, const char *s);
 void write_file(const fs::path& path, const std::string& s);
+std::unique_ptr<char[]> read_file(const char *path, size_t& size);
+
 std::string generate_random_password(size_t length);
 fs::path getenv_path(const char *name);
 std::system_error make_posix_exception(int err);
