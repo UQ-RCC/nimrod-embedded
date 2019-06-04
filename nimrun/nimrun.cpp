@@ -526,8 +526,19 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 	log_debug(log_level_debug, "%s\n", ss.c_str());
 }
 
+void load_shellfile(const char *file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv);
+
 int main(int argc, char **argv)
 {
+	load_shellfile(
+		argv[1],
+		"/home/zane/rcchome/staging/nrtest/generated.pln",
+		"/home/zane/rcchome/staging/nrtest/generated",
+		argc - 1,
+		argv + 1
+	);
+	return 0;
+
 	nimrun_args& args = nimrun.args;
 	int status = parse_arguments(argc, argv, stdout, stderr, &args);
 	if(status != 0)

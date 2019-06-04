@@ -25,15 +25,16 @@ void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
 	}
 }
 
-static std::regex regex_shebang("^#!\\s*(.+)$", std::regex_constants::ECMAScript);
-static std::regex regex_hashnim("^#NIM\\s*(.+)$", std::regex_constants::ECMAScript);
-static std::regex regex_hashnim_shebang("^#NIM\\s*shebang\\s*(.+)$", std::regex_constants::ECMAScript);
-
-/* \1 = parameter string, \2 = parameter name */
-static std::regex regex_hashnim_parameter("^#NIM\\s*(parameter\\s*([a-zA-Z_][a-zA-Z0-9]*)\\s*.+)$", std::regex_constants::ECMAScript);
-
 void load_shellfile(const char *file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
 {
+	/* The number of memory allocations these do is disgusting. */
+	std::regex regex_shebang("^#!.*$", std::regex_constants::ECMAScript);
+	std::regex regex_hashnim("^#NIM\\s+.+$", std::regex_constants::ECMAScript);
+	std::regex regex_hashnim_shebang("^#NIM\\s+shebang\\s*(.+)$", std::regex_constants::ECMAScript);
+
+	/* \1 = parameter string, \2 = parameter name */
+	std::regex regex_hashnim_parameter("^#NIM\\s+(parameter\\s*([a-zA-Z_][a-zA-Z0-9]*)\\s*.+)$", std::regex_constants::ECMAScript);
+
 	size_t size;
 	std::unique_ptr<char[]> indata = read_file(file, size);
 
@@ -41,8 +42,10 @@ void load_shellfile(const char *file, const fs::path& planpath, const fs::path& 
 	std::optional<std::string> shebang;
 	std::unordered_map<std::string, std::string> parameters;
 
-	for_each_delim(indata.get(), indata.get() + size, '\n', [&has_shebang, &shebang, &parameters](const std::string_view& v, size_t i) {
-		std::string line(v); /* regex_match() doesn't like string_views :( */
+	for_each_delim(indata.get(), indata.get() + size, '\n', [
+		&regex_shebang, &regex_hashnim, &regex_hashnim_shebang, &regex_hashnim_parameter,
+		&has_shebang, &shebang, &parameters
+	](const std::string_view& v, size_t i) {
 		std::match_results<std::string_view::const_iterator> m;
 
 		/* See if we have an initial #! as we'll need to replace it if we do. */
@@ -64,6 +67,7 @@ void load_shellfile(const char *file, const fs::path& planpath, const fs::path& 
 	});
 
 	{
+		/* Write the processed script. */
 		std::ofstream os(scriptpath, std::ios::out | std::ios::binary);
 		os.exceptions(std::ios::badbit | std::ios::failbit);
 
@@ -83,6 +87,7 @@ void load_shellfile(const char *file, const fs::path& planpath, const fs::path& 
 	}
 
 	{
+		/* Write the generated planfile. */
 		std::ofstream os(planpath, std::ios::out | std::ios::binary);
 		os.exceptions(std::ios::badbit | std::ios::failbit);
 

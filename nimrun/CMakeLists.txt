@@ -40,6 +40,8 @@ add_executable(nimrun
 	nimrod.cpp
 	utils.cpp
 
+	shell.cpp
+
 	parg.c
 	parg.h
 )
