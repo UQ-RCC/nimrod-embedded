@@ -531,18 +531,14 @@ static exec_mode_t get_execmode(const char *_argv0) noexcept
 {
 	std::string_view argv0(_argv0);
 	size_t idx = argv0.find_last_of(fs::path::preferred_separator);
-	if(idx == std::string_view::npos)
-		return exec_mode_t::nimrun;
+	if(idx != std::string_view::npos)
+		argv0 = argv0.substr(idx);
 
-	if(++idx >= argv0.size())
-		return exec_mode_t::nimrun;
-
-	if(argv0.substr(idx) == "nimexec")
+	if(argv0 == "nimexec")
 		return exec_mode_t::nimexec;
 	else
 		return exec_mode_t::nimrun;
 }
-
 
 int main(int argc, char **argv)
 {
