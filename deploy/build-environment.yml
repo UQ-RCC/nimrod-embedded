@@ -53,17 +53,37 @@
         creates: "{{ nimrod_home }}/bin/nimrod"
     - block:
         - name: create module path (lmod)
-          file: path={{ module_path_lmod }} state=directory
+          file:
+            path: "{{ module_path_lmod }}/{{ nimrun_module_name }}"
+            state: directory
+          register: module_dir
         - name: generate modulefile (lmod)
           template:
             src: nimrod-embedded.lua.j2
-            dest: "{{ module_path_lmod }}/{{ nimrod_version }}.lua"
+            dest: "{{ module_dir.path }}/{{ nimrod_version }}.lua"
+        - name: generate nimexec
+          template:
+            src: nimexec.j2
+            dest: "{{ bin_dir }}/nimexec"
+            mode: 0755
+          vars:
+            module_path: "{{ module_path_lmod }}"
       when: module_path_lmod is defined
     - block:
         - name: create module path (modules)
-          file: path={{ module_path_modules }} state=directory
+          file:
+            path: "{{ module_path_modules }}/{{ nimrun_module_name }}"
+            state: directory
+          register: module_dir
         - name: generate modulefile (modules)
           template:
             src: nimrod-embedded.j2
-            dest: "{{ module_path_modules }}/{{ nimrod_version }}"
+            dest: "{{ module_dir.path }}/{{ nimrod_version }}"
+        - name: generate nimexec
+          template:
+            src: nimexec.j2
+            dest: "{{ bin_dir }}/nimexec"
+            mode: 0755
+          vars:
+            module_path: "{{ module_path_modules }}"
       when: module_path_modules is defined

@@ -6,13 +6,24 @@ all:
     nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar.gz"
     nimrod_sha256: 1237953f5e8faff631e49e5907e3c9a36b43efdd6dc1192c484a6a8c1372a9cd
 
+    nimrun_module_name: embedded-nimrod
     nimrun_binary: "/path/to/nimrun"
+
   hosts:
     tinaroo:
       ansible_ssh_host: tinaroo.rcc.uq.edu.au
       root_dir: "/sw7/RCC/NimrodG/embedded-{{ nimrod_version }}"
-      module_path_lmod: /sw7/Modules/RCC/local/embedded-nimrod
+      module_path_lmod: /sw7/Modules/RCC/local
     nord3:
       ansible_ssh_host: nord1.bsc.es
       root_dir: /home/bsc19/bsc19175/nimrod-embedded
-      module_path_modules: "{{ root_dir }}/etc/modulefiles/embedded-nimrod"
+      module_path_modules: "{{ root_dir }}/etc/modulefiles"
+    # Test ones
+    tinaroo_test:
+      ansible_ssh_host: tinaroo.rcc.uq.edu.au
+      root_dir: "/home/uquser/embedded-nimrod-{{ nimrod_version }}"
+      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
+    nimroddevserver:
+      root_dir: /home/ubuntu/embedded-nimrod
+      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
+      module_path_modules: "{{ root_dir }}/etc/modulefiles"
