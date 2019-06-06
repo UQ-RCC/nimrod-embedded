@@ -38,7 +38,7 @@ void write_file(const fs::path& path, const std::string& s)
 	f.write(s.c_str(), s.size());
 }
 
-std::unique_ptr<char[]> read_file(const char *path, size_t& size)
+std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size)
 {
 	std::ifstream f;
 	f.exceptions(std::ios::failbit | std::ios::badbit);

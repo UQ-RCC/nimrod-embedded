@@ -25,7 +25,7 @@ void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
 	}
 }
 
-void load_shellfile(const char *file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
+void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
 {
 	/* The number of memory allocations these do is disgusting. */
 	std::regex regex_shebang("^#!.*$", std::regex_constants::ECMAScript);
@@ -36,7 +36,7 @@ void load_shellfile(const char *file, const fs::path& planpath, const fs::path& 
 	std::regex regex_hashnim_parameter("^#NIM\\s+(parameter\\s*([a-zA-Z_][a-zA-Z0-9]*)\\s*.+)$", std::regex_constants::ECMAScript);
 
 	size_t size;
-	std::unique_ptr<char[]> indata = read_file(file, size);
+	std::unique_ptr<char[]> indata = read_file(file.c_str(), size);
 
 	bool has_shebang = false;
 	std::optional<std::string> shebang;

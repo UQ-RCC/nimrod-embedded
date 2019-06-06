@@ -20,7 +20,7 @@
 #include <cstring>
 #include "nimrun.hpp"
 
-batch_info_t get_batch_info_bsc(const nimrun_args& args)
+batch_info_t get_batch_info_bsc()
 {
 	batch_info_t bi;
 
