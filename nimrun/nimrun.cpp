@@ -25,6 +25,8 @@
 #include <pwd.h>
 #include <sys/wait.h>
 #include <sys/utsname.h>
+#include <config.h>
+#include "config.h"
 #include "nimrun.hpp"
 
 namespace fs = std::filesystem;
@@ -519,7 +521,18 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		{"pem_key", si.pem_key},
 		{"pkcs12_cert", si.pkcs12_cert},
 		{"password", si.password},
-		{"interfaces", ips}
+		{"interfaces", ips},
+		{"compile_info", {
+			{"git", {
+				{"sha1", g_compile_info.git.sha1},
+				{"description", g_compile_info.git.description},
+				{"dirty", g_compile_info.git.dirty}
+			}},
+			{"version", {
+				{"nimrun", g_compile_info.version.nimrun},
+				{"openssl", g_compile_info.version.openssl},
+			}},
+		}}
 	};
 
 	std::string ss = j.dump(4, ' ');
@@ -548,6 +561,9 @@ int main(int argc, char **argv)
 	int status = parse_arguments(argc, argv, stdout, stderr, execmode, &args);
 	if(status != 0)
 		return status;
+
+	if(args.version)
+		return 0;
 
 	nimrun_system_info& sysinfo = nimrun.sysinfo;
 	sysinfo = gather_system_info(args);

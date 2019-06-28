@@ -21,9 +21,12 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <config.h>
 #include "parg.h"
 #include "nimrun.hpp"
+#include "config.h"
 
+#define ARGDEF_VERSION        		'v'
 #define ARGDEF_DEBUG        		'd'
 #define ARGDEF_TMPDIR				301
 #define ARGDEF_OUTDIR				302
@@ -34,6 +37,7 @@
 #define ARGDEF_HELP         		'h'
 
 static struct parg_option argdefs[] = {
+	{"version",					PARG_NOARG,		nullptr,	ARGDEF_VERSION},
 	{"debug",					PARG_NOARG,		nullptr,	ARGDEF_DEBUG},
 	{"tmpdir",					PARG_REQARG,	nullptr,	ARGDEF_TMPDIR},
 	{"outdir",					PARG_REQARG,	nullptr,	ARGDEF_OUTDIR},
@@ -45,7 +49,8 @@ static struct parg_option argdefs[] = {
 	{nullptr,					0,				nullptr,	0}
 };
 
-static const char *USAGE_OPTIONS = 
+static const char *USAGE_OPTIONS =
+"  -v, --version           Display version information\n"
 "  -d, --debug             Enable Debugging\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir                The output directory to use. If unspecified, use the one provided by the batch system\n"
@@ -55,6 +60,18 @@ static const char *USAGE_OPTIONS =
 "  --nimrod-home           The Nimrod home directory. If unspecified, use $NIMROD_HOME\n"
 "";
 
+nimrun_args::nimrun_args() noexcept :
+	version(0),
+	debug(0),
+	planfile(nullptr),
+	tmpdir(nullptr),
+	outdir(nullptr),
+	qpid_management_port(0),
+	qpid_home(nullptr),
+	java_home(nullptr),
+	nimrod_home(nullptr)
+{}
+
 int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 {
 	parg_state ps{};
@@ -62,12 +79,16 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 
 	memset(args, 0, sizeof(nimrun_args));
 
-	for(int c; (c = parg_getopt_long(&ps, argc, argv, "d", argdefs, nullptr)) != -1; )
+	for(int c; (c = parg_getopt_long(&ps, argc, argv, "vd", argdefs, nullptr)) != -1; )
 	{
 		switch(c)
 		{
 			case ARGDEF_HELP:
 				return 2;
+
+			case ARGDEF_VERSION:
+				++args->version;
+				return 0;
 
 			case ARGDEF_DEBUG:
 				++args->debug;
@@ -126,6 +147,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mod
 			fprintf(err, "Usage: %s <command> [arg]...\n", argv[0]);
 			return 2;
 		}
+		args->version = 0;
 		args->debug = 5;
 		args->planfile = argv[1];
 		args->tmpdir = nullptr;
@@ -141,6 +163,13 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mod
 		if(status != 0)
 		{
 			fprintf(err, "Usage: %s [OPTIONS] <planfile> \nOptions:\n%s", argv[0], USAGE_OPTIONS);
+			return status;
+		}
+
+		if(args->version)
+		{
+			fprintf(out, "nimrun %s OpenSSL/%s\n", g_compile_info.version.nimrun, g_compile_info.version.openssl);
+			fprintf(out, "Commit: %s\n", g_compile_info.git.sha1);
 			return status;
 		}
 	}

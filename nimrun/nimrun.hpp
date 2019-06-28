@@ -88,14 +88,17 @@ enum class exec_mode_t
 
 struct nimrun_args
 {
-	uint32_t debug;
-	const char *planfile;
-	const char *tmpdir;
-	const char *outdir;
-	uint16_t qpid_management_port;
-	const char *qpid_home;
-	const char *java_home;
-	const char *nimrod_home;
+	nimrun_args() noexcept;
+
+	uint32_t	version;
+	uint32_t	debug;
+	const char	*planfile;
+	const char	*tmpdir;
+	const char	*outdir;
+	uint16_t	qpid_management_port;
+	const char	*qpid_home;
+	const char	*java_home;
+	const char	*nimrod_home;
 };
 
 int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mode, nimrun_args *args);

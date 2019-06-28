@@ -1,28 +1,36 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.10)
 project(nimrun)
 
 enable_language(C CXX)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+include(GetGitRevisionDescription)
+
 find_package(Threads REQUIRED)
 find_package(OpenSSL 1.0.1 REQUIRED)
 
-execute_process(
-	COMMAND git describe --tags --always
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	OUTPUT_VARIABLE NIMRUN_GITVERSION
-	RESULT_VARIABLE GIT_STATUS
-	OUTPUT_STRIP_TRAILING_WHITESPACE
-	ERROR_STRIP_TRAILING_WHITESPACE
-)
+get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+git_describe(GIT_DESCRIBE)
+git_local_changes(GIT_LOCAL_CHANGES)
 
-set(NIMRUN_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" )
-configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${NIMRUN_GENERATED_INCLUDE_DIR}/config.h")
-
-if(NOT GIT_STATUS EQUAL 0)
-	message(WARNING "Failed to retrieve git info, status: ${GIT_STATUS}")
+if(GIT_DESCRIBE MATCHES "-NOTFOUND$")
+	set(GIT_DESCRIBE "UNKNOWN")
 endif()
 
+if(GIT_LOCAL_CHANGES MATCHES "DIRTY")
+	set(GIT_DESCRIBE "${GIT_DESCRIBE}-${GIT_LOCAL_CHANGES}")
+	set(GIT_DIRTY "true")
+else()
+	set(GIT_DIRTY "false")
+endif()
+
+configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")
+configure_file("${PROJECT_SOURCE_DIR}/config.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/config.cpp")
+
 add_executable(nimrun
+	"${CMAKE_CURRENT_BINARY_DIR}/config.h"
+	"${CMAKE_CURRENT_BINARY_DIR}/config.cpp"
+
 	nimrun.cpp
 	ip.cpp
 	ssl.cpp
@@ -57,7 +65,7 @@ target_link_libraries(nimrun OpenSSL::SSL)
 target_link_libraries(nimrun stdc++fs)
 target_link_libraries(nimrun dl)
 
-target_include_directories(nimrun PRIVATE "${NIMRUN_GENERATED_INCLUDE_DIR}")
+target_include_directories(nimrun PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 target_compile_definitions(nimrun PRIVATE __STDC_LIMIT_MACROS)
 
