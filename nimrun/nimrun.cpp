@@ -596,9 +596,12 @@ int main(int argc, char **argv)
 	if(!key)
 		return dump_openssl_errors(stderr), 1;
 
-	std::vector<std::string> certnames(sysinfo.interfaces);
-	//certnames.push_back(sysinfo.hostname);
-	certnames.push_back(sysinfo.simple_hostname);
+	std::vector<std::string_view> certnames;
+	certnames.reserve(sysinfo.interfaces.size() + 1);
+	certnames.emplace_back(sysinfo.simple_hostname);
+	for(const std::string& i : sysinfo.interfaces)
+		certnames.emplace_back(i);
+
 	x509_ptr cert = create_cert(key.get(), 0, 3650, sysinfo.hostname, certnames);
 	if(!cert)
 		return dump_openssl_errors(stderr), 1;

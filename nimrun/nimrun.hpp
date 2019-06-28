@@ -144,7 +144,7 @@ void deinit_openssl();
 void dump_openssl_errors(FILE *fp) noexcept;
 
 evp_pkey_ptr create_pkey(size_t bits) noexcept;
-x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string& cn, const std::vector<std::string>& altnames) noexcept;
+x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string_view& cn, const std::vector<std::string_view>& altnames) noexcept;
 
 int write_pem_key(EVP_PKEY *pkey, FILE *fp) noexcept;
 int write_pem_cert(X509 *cert, FILE *fp) noexcept;
