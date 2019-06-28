@@ -49,7 +49,6 @@ int get_ip_addrs(std::vector<std::string>& addrs)
 
 	size_t naddr = conf.ifc_len / sizeof(struct ifreq);
 
-	;
 	for(size_t i = 0; i < naddr; ++i)
 		addrs.emplace_back(inet_ntoa(reinterpret_cast<struct sockaddr_in *>(&reqs[i].ifr_addr)->sin_addr));
 
@@ -105,7 +104,7 @@ static std::vector<tcp_entry> read_tcp_entries()
 	std::getline(f, entry);
 	while(std::getline(f, entry))
 	{
-		tcp_entry e;
+		tcp_entry e{};
 		if(parse_tcp(entry.c_str(), &e) == nullptr)
 			continue;
 
