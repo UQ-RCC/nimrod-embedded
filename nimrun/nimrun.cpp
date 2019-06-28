@@ -397,9 +397,16 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	if(passwd == nullptr)
 		throw make_posix_exception(errno);
 
+	fs::path cwd = fs::current_path();
+
 	sysinfo.username = passwd->pw_name;
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
+	sysinfo.batch_info = {
+		.job_id = "",
+		.outdir = cwd.c_str(),
+		.ompthreads = 1
+	};
 
 	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(sysinfo.cluster)];
 	if(infoproc != nullptr)
@@ -547,6 +554,7 @@ static exec_mode_t get_execmode(const char *_argv0) noexcept
     if(idx != std::string_view::npos)
         argv0 = argv0.substr(idx + 1);
 
+    //return exec_mode_t::nimexec;
     if(argv0 == "nimexec")
         return exec_mode_t::nimexec;
     else

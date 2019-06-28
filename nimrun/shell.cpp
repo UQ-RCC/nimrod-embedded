@@ -28,7 +28,6 @@ void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
 void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
 {
 	/* The number of memory allocations these do is disgusting. */
-	std::regex regex_shebang("^#!.*$", std::regex_constants::ECMAScript);
 	std::regex regex_hashnim("^#NIM\\s+.+$", std::regex_constants::ECMAScript);
 	std::regex regex_hashnim_shebang("^#NIM\\s+shebang\\s*(.+)$", std::regex_constants::ECMAScript);
 
@@ -37,13 +36,15 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 
 	size_t size;
 	std::unique_ptr<char[]> indata = read_file(file.c_str(), size);
+	if(!indata)
+		throw std::runtime_error("file doesn't exist");
 
 	bool has_shebang = false;
 	std::optional<std::string> shebang;
 	std::unordered_map<std::string, std::string> parameters;
 
 	for_each_delim(indata.get(), indata.get() + size, '\n', [
-		&regex_shebang, &regex_hashnim, &regex_hashnim_shebang, &regex_hashnim_parameter,
+		&regex_hashnim, &regex_hashnim_shebang, &regex_hashnim_parameter,
 		&has_shebang, &shebang, &parameters
 	](const std::string_view& v, size_t i) {
 		std::match_results<std::string_view::const_iterator> m;
@@ -51,7 +52,7 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 		/* See if we have an initial #! as we'll need to replace it if we do. */
 		if(i == 0)
 		{
-			has_shebang = std::regex_match(v.begin(), v.end(), m, regex_shebang);
+			has_shebang = strncmp("#!", v.data(), std::min(v.size(), size_t(2))) == 0;
 			return;
 		}
 

@@ -40,16 +40,20 @@ void write_file(const fs::path& path, const std::string& s)
 
 std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size)
 {
-	std::ifstream f;
-	f.exceptions(std::ios::failbit | std::ios::badbit);
-	f.open(path, std::ios::binary);
+	std::ifstream f(path, std::ios::binary);
+	if(!f)
+		return nullptr;
 
-	f.seekg(0, std::ios::end);
+	if(!f.seekg(0, std::ios::end))
+		return nullptr;
+
 	size_t _size = static_cast<size_t>(f.tellg());
-	f.seekg(0, std::ios::beg);
+	if(!f.seekg(0, std::ios::beg))
+		return nullptr;
 
 	std::unique_ptr<char[]> buf = std::make_unique<char[]>(_size);
-	f.read(buf.get(), _size);
+	if(!f.read(buf.get(), _size))
+		return nullptr;
 
 	size = _size;
 	return buf;
@@ -71,15 +75,6 @@ std::string generate_random_password(size_t length)
 		s[i] = s_character_set[s[i] % (sizeof(s_character_set) - 1)];
 
 	return s;
-}
-
-fs::path getenv_path(const char *name)
-{
-	const char *c = getenv(name);
-	if(c == nullptr)
-		return fs::path();
-	
-	return fs::path(c);
 }
 
 std::system_error make_posix_exception(int err)
