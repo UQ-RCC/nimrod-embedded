@@ -137,7 +137,7 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 	pi.job_id = job;
 }
 
-batch_info_t get_batch_info_rcc(const nimrun_args& args)
+batch_info_t get_batch_info_rcc()
 {
 	batch_info_t bi;
 

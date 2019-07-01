@@ -25,6 +25,8 @@
 #include <pwd.h>
 #include <sys/wait.h>
 #include <sys/utsname.h>
+#include <config.h>
+#include "config.h"
 #include "nimrun.hpp"
 
 namespace fs = std::filesystem;
@@ -102,6 +104,7 @@ static struct nimrun_state
 {
 	nimrun_args args;
 	nimrun_system_info sysinfo;
+	fs::path planfile;
 	nimcli *cli;
 
 	resource_vector_type::const_iterator resit;
@@ -407,14 +410,21 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	if(passwd == nullptr)
 		throw make_posix_exception(errno);
 
+	fs::path cwd = fs::current_path();
+
 	sysinfo.username = passwd->pw_name;
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
+	sysinfo.batch_info = {
+		.job_id = "",
+		.outdir = cwd.c_str(),
+		.ompthreads = 1
+	};
 
 	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(sysinfo.cluster)];
 	if(infoproc != nullptr)
 	{
-		sysinfo.batch_info = infoproc(args);
+		sysinfo.batch_info = infoproc();
 
 		for(const auto& e : sysinfo.batch_info.nodes)
 		{
@@ -531,7 +541,18 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		{"pem_key", si.pem_key},
 		{"pkcs12_cert", si.pkcs12_cert},
 		{"password", si.password},
-		{"interfaces", ips}
+		{"interfaces", ips},
+		{"compile_info", {
+			{"git", {
+				{"sha1", g_compile_info.git.sha1},
+				{"description", g_compile_info.git.description},
+				{"dirty", g_compile_info.git.dirty}
+			}},
+			{"version", {
+				{"nimrun", g_compile_info.version.nimrun},
+				{"openssl", g_compile_info.version.openssl},
+			}},
+		}}
 	};
 
 	std::string ss = j.dump(4, ' ');
@@ -539,15 +560,44 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 	log_debug(log_level_debug, "%s\n", ss.c_str());
 }
 
+static exec_mode_t get_execmode(const char *_argv0) noexcept
+{
+    std::string_view argv0(_argv0);
+    size_t idx = argv0.find_last_of(fs::path::preferred_separator);
+    if(idx != std::string_view::npos)
+        argv0 = argv0.substr(idx + 1);
+
+    //return exec_mode_t::nimexec;
+    if(argv0 == "nimexec")
+        return exec_mode_t::nimexec;
+    else
+        return exec_mode_t::nimrun;
+}
+
 int main(int argc, char **argv)
 {
+	exec_mode_t execmode = get_execmode(argv[0]);
+
 	nimrun_args& args = nimrun.args;
-	int status = parse_arguments(argc, argv, stdout, stderr, &args);
+	int status = parse_arguments(argc, argv, stdout, stderr, execmode, &args);
 	if(status != 0)
 		return status;
 
+	if(args.version)
+		return 0;
+
 	nimrun_system_info& sysinfo = nimrun.sysinfo;
 	sysinfo = gather_system_info(args);
+
+	if(execmode == exec_mode_t::nimexec)
+	{
+		nimrun.planfile = sysinfo.tmpdir / "generated.pln";
+		process_shellfile(args.planfile, nimrun.planfile, sysinfo.tmpdir / "generated", argc - 1, argv + 1);
+	}
+	else
+	{
+		nimrun.planfile = args.planfile;
+	}
 
 	if(!fs::is_regular_file(sysinfo.java))
 		return log_error("Unable to locate Java. Exiting...\n"), 1;
@@ -560,18 +610,19 @@ int main(int argc, char **argv)
 		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
 	}
 
-	/* Here all the system info should be already gathered. */
 	init_openssl();
-
 	auto sslcrap = make_protector(deinit_openssl);
 
 	evp_pkey_ptr key = create_pkey(4096);
 	if(!key)
 		return dump_openssl_errors(stderr), 1;
 
-	std::vector<std::string> certnames(sysinfo.interfaces);
-	//certnames.push_back(sysinfo.hostname);
-	certnames.push_back(sysinfo.simple_hostname);
+	std::vector<std::string_view> certnames;
+	certnames.reserve(sysinfo.interfaces.size() + 1);
+	certnames.emplace_back(sysinfo.simple_hostname);
+	for(const std::string& i : sysinfo.interfaces)
+		certnames.emplace_back(i);
+
 	x509_ptr cert = create_cert(key.get(), 0, 3650, sysinfo.hostname, certnames);
 	if(!cert)
 		return dump_openssl_errors(stderr), 1;
@@ -814,7 +865,7 @@ static state_t handler_nimrod_common(state_t state, state_mode_t mode, nimrun_st
 				nimrun.nimrod_pid = nimrun.cli->setup_init(nimrun.sysinfo.nimrod_setupini);
 				break;
 			case state_t::nimrod_addexp:
-				nimrun.nimrod_pid = nimrun.cli->add_experiment("localexp", nimrun.args.planfile);
+				nimrun.nimrod_pid = nimrun.cli->add_experiment("localexp", nimrun.planfile.c_str());
 				break;
 			case state_t::nimrod_master:
 				nimrun.nimrod_pid = nimrun.cli->master("localexp", 500);

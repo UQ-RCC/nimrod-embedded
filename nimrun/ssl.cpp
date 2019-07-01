@@ -116,7 +116,7 @@ evp_pkey_ptr create_pkey(size_t bits) noexcept
 	return pkey;
 }
 
-x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string& cn, const std::vector<std::string>& altnames) noexcept
+x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string_view& cn, const std::vector<std::string_view>& altnames) noexcept
 {
 	ERR_clear_error();
 
@@ -144,8 +144,8 @@ x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string
 
 	X509_NAME *name = X509_get_subject_name(cert.get());
 	{
-		unsigned char *_name = reinterpret_cast<unsigned char *>(const_cast<char*>(cn.c_str()));
-		if(X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_ASC, _name, -1, -1, 0) != 1)
+		unsigned char *_name = reinterpret_cast<unsigned char *>(const_cast<char*>(cn.data()));
+		if(X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_ASC, _name, static_cast<int>(cn.size()), -1, 0) != 1)
 			return nullptr;
 	}
 
@@ -154,9 +154,9 @@ x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string
 		if(!gens)
 			return nullptr;
 
-		for(const std::string& s : altnames)
+		for(const std::string_view& s : altnames)
 		{
-			unsigned char *_name = reinterpret_cast<unsigned char *>(const_cast<char*>(s.c_str()));
+			unsigned char *_name = reinterpret_cast<unsigned char *>(const_cast<char*>(s.data()));
 
 			general_name_ptr gen(GENERAL_NAME_new());
 			if(!gen)
@@ -166,7 +166,7 @@ x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string
 			if(!ia5)
 				return nullptr;
 
-			if(!ASN1_STRING_set(ia5.get(), _name, -1))
+			if(!ASN1_STRING_set(ia5.get(), _name, static_cast<int>(s.size())))
 				return nullptr;
 
 			GENERAL_NAME_set0_value(gen.get(), GEN_DNS, ia5.get());

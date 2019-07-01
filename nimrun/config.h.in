@@ -6,6 +6,27 @@
 #ifndef NIMRUN_CONFIG_H_
 #define NIMRUN_CONFIG_H_
 
-#cmakedefine NIMRUN_GITVERSION "@NIMRUN_GITVERSION@"
+typedef struct
+{
+	struct
+	{
+		const char *sha1;
+		const char *description;
+		bool dirty;
+	} git;
+	struct
+	{
+		const char *nimrun;
+		const char *openssl;
+	} version;
+} compile_info_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern const compile_info_t g_compile_info;
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NIMRUN_CONFIG_H_ */

@@ -21,9 +21,12 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <config.h>
 #include "parg.h"
 #include "nimrun.hpp"
+#include "config.h"
 
+#define ARGDEF_VERSION        		'v'
 #define ARGDEF_DEBUG        		'd'
 #define ARGDEF_TMPDIR				301
 #define ARGDEF_OUTDIR				302
@@ -34,6 +37,7 @@
 #define ARGDEF_HELP         		'h'
 
 static struct parg_option argdefs[] = {
+	{"version",					PARG_NOARG,		nullptr,	ARGDEF_VERSION},
 	{"debug",					PARG_NOARG,		nullptr,	ARGDEF_DEBUG},
 	{"tmpdir",					PARG_REQARG,	nullptr,	ARGDEF_TMPDIR},
 	{"outdir",					PARG_REQARG,	nullptr,	ARGDEF_OUTDIR},
@@ -45,24 +49,8 @@ static struct parg_option argdefs[] = {
 	{nullptr,					0,				nullptr,	0}
 };
 
-static const char *USAGE_OPTIONS2 = 
-"  -d, --debug\n"
-"                          Enable Debugging\n"
-"  --tmpdir\n"
-"                          The temporary directory to use. If unspecified, use $TMPDIR\n"
-"  --outdir\n"
-"                          The output directory to use. If unspecified, use the one provided by the batch system\n"
-"  --qpid-management-port\n"
-"                          Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
-"  --qpid-home\n"
-"                          The Qpid home directory. If unspecified, use $QPID_HOME\n"
-"  --java-home\n"
-"                          The Java home directory. If unspecified, use $JAVA_HOME\n"
-"  --nimrod-home\n"
-"                          The Nimrod home directory. If unspecified, use $NIMROD_HOME\n"
-"";
-
-static const char *USAGE_OPTIONS = 
+static const char *USAGE_OPTIONS =
+"  -v, --version           Display version information\n"
 "  -d, --debug             Enable Debugging\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir                The output directory to use. If unspecified, use the one provided by the batch system\n"
@@ -72,31 +60,35 @@ static const char *USAGE_OPTIONS =
 "  --nimrod-home           The Nimrod home directory. If unspecified, use $NIMROD_HOME\n"
 "";
 
-static int usage(int val, FILE *s, const char *argv0)
-{
-	fprintf(s, "Usage: %s [OPTIONS] <planfile> \nOptions:\n%s", argv0, USAGE_OPTIONS);
-	return val;
-}
+nimrun_args::nimrun_args() noexcept :
+	version(0),
+	debug(0),
+	planfile(nullptr),
+	tmpdir(nullptr),
+	outdir(nullptr),
+	qpid_management_port(0),
+	qpid_home(nullptr),
+	java_home(nullptr),
+	nimrod_home(nullptr)
+{}
 
-static int parseerror(int val, FILE *s, const char *argv0, const char *msg)
+int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 {
-	fprintf(s, "Error parsing arguments: %s\n", msg);
-	return usage(val, s, argv0);
-}
-
-int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args)
-{
-	parg_state ps;
+	parg_state ps{};
 	parg_init(&ps);
 
 	memset(args, 0, sizeof(nimrun_args));
 
-	for(int c; (c = parg_getopt_long(&ps, argc, argv, "jd", argdefs, nullptr)) != -1; )
+	for(int c; (c = parg_getopt_long(&ps, argc, argv, "vd", argdefs, nullptr)) != -1; )
 	{
 		switch(c)
 		{
 			case ARGDEF_HELP:
-				return usage(2, out, argv[0]);
+				return 2;
+
+			case ARGDEF_VERSION:
+				++args->version;
+				return 0;
 
 			case ARGDEF_DEBUG:
 				++args->debug;
@@ -112,7 +104,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 
 			case ARGDEF_QPID_MANAGEMENT_PORT:
 				if(sscanf(ps.optarg, "%hu", &args->qpid_management_port) != 1)
-					return usage(2, out, argv[0]);
+					return 2;
 				break;
 
 			case ARGDEF_QPID_HOME:
@@ -129,44 +121,89 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 
 			case 1:
 				if(args->planfile != nullptr)
-					return usage(2, out, argv[0]);
+					return 2;
 				args->planfile = ps.optarg;
 				break;
 
 			case '?':
 			case ':':
 			default:
-				return usage(2, out, argv[0]);
+				return 2;
 		}
 	}
 
 	if(args->planfile == nullptr)
+		return 2;
+
+	return 0;
+}
+
+int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mode, nimrun_args *args)
+{
+	if(mode == exec_mode_t::nimexec)
 	{
-		return usage(2, out, argv[0]);
+		if(argc < 2)
+		{
+			fprintf(err, "Usage: %s <command> [arg]...\n", argv[0]);
+			return 2;
+		}
+		args->version = 0;
+		args->debug = 5;
+		args->planfile = argv[1];
+		args->tmpdir = nullptr;
+		args->outdir = nullptr;
+		args->qpid_management_port = 0;
+		args->qpid_home = nullptr;
+		args->java_home = nullptr;
+		args->nimrod_home = nullptr;
+	}
+	else
+	{
+		int status = parse_args_nimrun(argc, argv, args);
+		if(status != 0)
+		{
+			fprintf(err, "Usage: %s [OPTIONS] <planfile> \nOptions:\n%s", argv[0], USAGE_OPTIONS);
+			return status;
+		}
+
+		if(args->version)
+		{
+			fprintf(out, "nimrun %s OpenSSL/%s\n", g_compile_info.version.nimrun, g_compile_info.version.openssl);
+			fprintf(out, "Commit: %s\n", g_compile_info.git.sha1);
+			return status;
+		}
 	}
 
-	if((args->tmpdir == nullptr && (args->tmpdir = getenv("TMPDIR")) == nullptr) || args->tmpdir[0] == '\0')
-	{
-		fprintf(stderr, "TMPDIR isn't set. Please use the --tmpdir option.\n");
-		return 1;
-	}
 
-	if((args->qpid_home == nullptr && (args->qpid_home = getenv("QPID_HOME")) == nullptr) || args->qpid_home[0] == '\0')
-	{
-		fprintf(stderr, "QPID_HOME isn't set. Please use the --qpid-home option.\n");
-		return 1;
-	}
+	auto checkarg = [mode, err](const char *&val, const char *env, const char *arg) {
 
-	if((args->java_home == nullptr && (args->java_home = getenv("JAVA_HOME")) == nullptr) || args->java_home[0] == '\0')
-	{
-		fprintf(stderr, "JAVA_HOME isn't set. Please use the --java-home option.\n");
-		return 1;
-	}
+		if(val == nullptr || val[0] == '\0')
+			val = getenv(env);
 
-	if((args->nimrod_home == nullptr && (args->nimrod_home = getenv("NIMROD_HOME")) == nullptr) || args->nimrod_home[0] == '\0')
-	{
-		fprintf(stderr, "NIMROD_HOME isn't set. Please use the --nimrod-home option.\n");
+		if(val == nullptr || val[0] == '\0')
+		{
+			if(mode == exec_mode_t::nimexec)
+				fprintf(err, "%s isn't set, cannot continue...\n", env);
+			else
+				fprintf(err, "%s isn't set. Please use the %s option.\n", env, arg);
+
+			return false;
+		}
+
+		return true;
+	};
+
+	if(!checkarg(args->tmpdir, "TMPDIR", "--tmpdir"))
 		return 1;
-	}
+
+	if(!checkarg(args->qpid_home, "QPID_HOME", "--qpid-home"))
+		return 1;
+
+	if(!checkarg(args->java_home, "JAVA_HOME", "--java-home"))
+		return 1;
+
+	if(!checkarg(args->nimrod_home, "NIMROD_HOME", "--nimrod-home"))
+		return 1;
+
 	return 0;
 }

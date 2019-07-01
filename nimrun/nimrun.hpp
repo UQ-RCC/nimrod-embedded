@@ -77,17 +77,31 @@ auto make_protector(D& deleter)
 }
 
 /* args.cpp */
-struct nimrun_args {
-	uint32_t debug;
-	const char *planfile;
-	const char *tmpdir;
-	const char *outdir;
-	uint16_t qpid_management_port;
-	const char *qpid_home;
-	const char *java_home;
-	const char *nimrod_home;
+
+enum class exec_mode_t
+{
+	/* Legacy mode, accepts arguments, runs a planfile. */
+	nimrun,
+	/* New mode, no arguments, processes #NIM file. */
+	nimexec
 };
-int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
+
+struct nimrun_args
+{
+	nimrun_args() noexcept;
+
+	uint32_t	version;
+	uint32_t	debug;
+	const char	*planfile;
+	const char	*tmpdir;
+	const char	*outdir;
+	uint16_t	qpid_management_port;
+	const char	*qpid_home;
+	const char	*java_home;
+	const char	*nimrod_home;
+};
+
+int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mode, nimrun_args *args);
 
 using node_map_type = std::unordered_map<std::string, size_t>;
 struct batch_info_t
@@ -98,16 +112,16 @@ struct batch_info_t
 	node_map_type nodes;
 };
 
-using batch_info_proc_t = batch_info_t(*)(const nimrun_args& args);
+using batch_info_proc_t = batch_info_t(*)();
 
 /* rcc.cpp */
-batch_info_t get_batch_info_rcc(const nimrun_args& args);
+batch_info_t get_batch_info_rcc();
 
 /* wiener.cpp */
 batch_info_t get_batch_info_wiener(const nimrun_args& args);
 
 /* bsc.cpp */
-batch_info_t get_batch_info_bsc(const nimrun_args& args);
+batch_info_t get_batch_info_bsc();
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);
@@ -133,11 +147,14 @@ void deinit_openssl();
 void dump_openssl_errors(FILE *fp) noexcept;
 
 evp_pkey_ptr create_pkey(size_t bits) noexcept;
-x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string& cn, const std::vector<std::string>& altnames) noexcept;
+x509_ptr create_cert(EVP_PKEY *pkey, long serial, size_t days, const std::string_view& cn, const std::vector<std::string_view>& altnames) noexcept;
 
 int write_pem_key(EVP_PKEY *pkey, FILE *fp) noexcept;
 int write_pem_cert(X509 *cert, FILE *fp) noexcept;
 int write_pkcs12(EVP_PKEY *pkey, X509 *cert, const char *name, const char *pass, FILE *fp) noexcept;
+
+/* shell.cpp */
+void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv);
 
 /* qpid.cpp */
 std::string generate_qpid_json(const fs::path& qpid_work, const char *user, const char *pass, const fs::path& cert_path, const char *cert_pass, uint16_t amqpPort, uint16_t managementPort);
@@ -179,8 +196,9 @@ private:
 /* utils.cpp */
 void write_file(const fs::path& path, const char *s);
 void write_file(const fs::path& path, const std::string& s);
+std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size);
+
 std::string generate_random_password(size_t length);
-fs::path getenv_path(const char *name);
 std::system_error make_posix_exception(int err);
 pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept;
 

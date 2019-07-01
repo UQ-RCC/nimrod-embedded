@@ -20,14 +20,14 @@
 #include <cstring>
 #include "nimrun.hpp"
 
-batch_info_t get_batch_info_bsc(const nimrun_args& args)
+batch_info_t get_batch_info_bsc()
 {
 	batch_info_t bi;
 
-	if(!(bi.job_id = getenv("LSB_JOBID")))
+	if(!(bi.job_id = getenv("LSB_JOBID")) || bi.job_id[0] == '\0')
 		throw std::runtime_error("LSB_JOBID isn't set");
 
-	if(!(bi.outdir = getenv("LS_SUBCWD")))
+	if(!(bi.outdir = getenv("LS_SUBCWD")) || bi.outdir[0] == '\0')
 		throw std::runtime_error("LS_SUBCWD isn't set");
 
 	/* LSF is a tad nicer than PBS in this regard. */
