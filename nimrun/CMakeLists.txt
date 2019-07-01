@@ -39,6 +39,8 @@ add_executable(nimrun
 	minipbs.hpp
 	minipbs.cpp
 
+	wiener.cpp
+
 	bsc.cpp
 
 	qpid.cpp

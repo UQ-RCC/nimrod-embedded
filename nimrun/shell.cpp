@@ -5,26 +5,6 @@
 #include <optional>
 #include "nimrun.hpp"
 
-template<
-    typename V,
-    typename CharT = char,
-    typename InputIt = const CharT*,
-    typename Traits = std::char_traits<CharT>,
-    typename ViewT = std::basic_string_view<CharT, Traits>
->
-void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
-{
-	size_t i = 0;
-	for(InputIt start = begin, next; start != end; start = next, ++i)
-	{
-		if((next = std::find(start, end, delim)) != end)
-		{
-			proc(ViewT(start, std::distance(start, next)), i);
-			++next;
-		}
-	}
-}
-
 void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
 {
 	/* The number of memory allocations these do is disgusting. */

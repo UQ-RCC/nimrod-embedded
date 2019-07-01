@@ -23,6 +23,7 @@
 #include <memory>
 #include <filesystem>
 #include <unordered_map>
+#include <algorithm>
 #include <cstdio>
 #include <unistd.h>
 #include <dlfcn.h>
@@ -118,7 +119,7 @@ using batch_info_proc_t = batch_info_t(*)();
 batch_info_t get_batch_info_rcc();
 
 /* wiener.cpp */
-batch_info_t get_batch_info_wiener(const nimrun_args& args);
+batch_info_t get_batch_info_wiener();
 
 /* bsc.cpp */
 batch_info_t get_batch_info_bsc();
@@ -201,5 +202,25 @@ std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size);
 std::string generate_random_password(size_t length);
 std::system_error make_posix_exception(int err);
 pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept;
+
+template<
+    typename V,
+    typename CharT = char,
+    typename InputIt = const CharT*,
+    typename Traits = std::char_traits<CharT>,
+    typename ViewT = std::basic_string_view<CharT, Traits>
+>
+void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
+{
+	size_t i = 0;
+	for(InputIt start = begin, next; start != end; start = next, ++i)
+	{
+		if((next = std::find(start, end, delim)) != end)
+		{
+			proc(ViewT(start, std::distance(start, next)), i);
+			++next;
+		}
+	}
+}
 
 #endif /* _NIMRUN_HPP */
