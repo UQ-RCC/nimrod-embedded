@@ -21,14 +21,20 @@
 #define _NIMRUN_HPP
 
 #include <memory>
-#include <filesystem>
 #include <unordered_map>
 #include <algorithm>
 #include <cstdio>
 #include <unistd.h>
 #include <dlfcn.h>
 
+/* Wiener only has GCC 7.3.0 */
+#if defined(__GNUC__) && __GNUC__ < 8
+#	include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#	include <filesystem>
 namespace fs = std::filesystem;
+#endif
 
 struct file_desc
 {

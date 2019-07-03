@@ -29,8 +29,6 @@
 #include "config.h"
 #include "nimrun.hpp"
 
-namespace fs = std::filesystem;
-
 enum class cluster_t : size_t
 {
 	rcc_tinaroo = 0,

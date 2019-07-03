@@ -124,7 +124,7 @@ std::vector<uint16_t> get_listening_ports(pid_t pid)
 
 	for(auto& de : fs::directory_iterator(_fdpath))
 	{
-		if(!de.is_symlink())
+		if(fs::is_symlink(de))
 			continue;
 
 		fs::path link = fs::read_symlink(de);

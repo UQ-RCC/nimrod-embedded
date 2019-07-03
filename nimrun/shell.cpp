@@ -64,7 +64,7 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 			os << v << '\n';
 		});
 
-		fs::permissions(scriptpath, fs::perms::owner_all, fs::perm_options::replace);
+		fs::permissions(scriptpath, fs::perms::owner_all);
 	}
 
 	{
@@ -89,6 +89,6 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 		os << "\tcopy node:stderr.txt root:stderr-$jobindex.txt" << std::endl;
 		os << "endtask" << std::endl;
 
-		fs::permissions(planpath, fs::perms::owner_read | fs::perms::owner_write, fs::perm_options::replace);
+		fs::permissions(planpath, fs::perms::owner_read | fs::perms::owner_write);
 	}
 }
