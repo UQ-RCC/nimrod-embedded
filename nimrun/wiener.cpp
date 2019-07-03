@@ -126,5 +126,11 @@ batch_info_t get_batch_info_wiener()
 	for(const auto& h : hosts)
 		bi.nodes[std::string(h.first)] = h.second;
 
+	bi.ompthreads = 1;
+
+	const char *_ompthreads = getenv("OMPTHREADS");
+	if(_ompthreads != nullptr)
+		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
+
 	return bi;
 }
