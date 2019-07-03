@@ -215,10 +215,11 @@ void for_each_delim(InputIt begin, InputIt end, CharT delim, V&& proc)
 	size_t i = 0;
 	for(InputIt start = begin, next; start != end; start = next, ++i)
 	{
-		if((next = std::find(start, end, delim)) != end)
+		if((next = std::find(start, end, delim)))
 		{
 			proc(ViewT(start, std::distance(start, next)), i);
-			++next;
+			if(next != end)
+				++next;
 		}
 	}
 }
