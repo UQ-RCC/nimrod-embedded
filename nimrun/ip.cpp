@@ -19,40 +19,46 @@
  */
 #include <vector>
 #include <string>
-#include <cstring>
 #include <fstream>
-#include <algorithm>
-#include <unistd.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include "nimrun.hpp"
+
+struct ifa_deleter
+{
+	void operator()(struct ifaddrs *ifap) noexcept { freeifaddrs(ifap); }
+};
+using ifa_ptr = std::unique_ptr<struct ifaddrs, ifa_deleter>;
 
 int get_ip_addrs(std::vector<std::string>& addrs)
 {
-	/* If you have more than 32 interfaces then seek help. */
-	constexpr size_t num_reqs = 32;
-	struct ifreq reqs[num_reqs];
-	struct ifconf conf;
-
-	memset(reqs, 0, sizeof(reqs));
-	memset(&conf, 0, sizeof(ifconf));
-	conf.ifc_req = reqs;
-	conf.ifc_len = sizeof(reqs);
-
-	fd_ptr s(socket(AF_UNIX, SOCK_STREAM, 0));
-	if(!s)
+	struct ifaddrs *_ifap = nullptr;
+	if(getifaddrs(&_ifap) < 0)
 		return -1;
 
-	if(ioctl(s.get(), SIOCGIFCONF, &conf) < 0)
-		return -1;
+	ifa_ptr ifap(_ifap);
 
-	size_t naddr = conf.ifc_len / sizeof(struct ifreq);
+	char buf[std::max(INET_ADDRSTRLEN, INET6_ADDRSTRLEN)];
 
-	for(size_t i = 0; i < naddr; ++i)
-		addrs.emplace_back(inet_ntoa(reinterpret_cast<struct sockaddr_in *>(&reqs[i].ifr_addr)->sin_addr));
+	for(struct ifaddrs *ifa = ifap.get(); ifa != nullptr; ifa = ifa->ifa_next)
+	{
+		if(ifa->ifa_addr == nullptr)
+			continue;
 
-	return static_cast<int>(naddr);
+		const void *addr = nullptr;
+		if(ifa->ifa_addr->sa_family == AF_INET)
+			addr = &reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr)->sin_addr;
+		else if(ifa->ifa_addr->sa_family == AF_INET6)
+			addr = &reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_addr)->sin6_addr;
+
+		if(addr == nullptr)
+			continue;
+
+		inet_ntop(ifa->ifa_addr->sa_family, addr, buf, sizeof(buf));
+		addrs.emplace_back(buf);
+	}
+
+	return 0;
 }
 
 struct tcp_entry
