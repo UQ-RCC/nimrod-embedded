@@ -1,10 +1,10 @@
 all:
   vars:
-    nimrod_version: 1.1.0
+    nimrod_version: 1.1.4
     nimrod_package: "nimrod-{{ nimrod_version }}"
 
     nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar.gz"
-    nimrod_sha256: 1237953f5e8faff631e49e5907e3c9a36b43efdd6dc1192c484a6a8c1372a9cd
+    nimrod_sha256: a0a692ead217987de3593aa5747ea5a734277dff222c76f22156e43e7d831027
 
     nimrun_module_name: embedded-nimrod
     nimrun_binary: "/path/to/nimrun"
@@ -27,3 +27,7 @@ all:
       root_dir: /home/ubuntu/embedded-nimrod
       module_path_lmod: "{{ root_dir }}/etc/modulefiles"
       module_path_modules: "{{ root_dir }}/etc/modulefiles"
+    wiener:
+      ansible_ssh_host: wiener.hpc.dc.uq.edu.au
+      root_dir: "/clusterdata/uquser/embedded-nimrod-{{ nimrod_version }}"
+      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
