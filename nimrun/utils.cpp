@@ -22,20 +22,12 @@
 #include <fstream>
 #include "nimrun.hpp"
 
-void write_file(const fs::path& path, const char *s)
+std::ofstream open_write_file(const fs::path& path)
 {
 	std::ofstream f;
 	f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	f.open(path, std::ios::binary);
-	f.write(s, strlen(s));
-}
-
-void write_file(const fs::path& path, const std::string& s)
-{
-	std::ofstream f;
-	f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	f.open(path, std::ios::binary);
-	f.write(s.c_str(), s.size());
+	f.open(path, std::ios::out | std::ios::binary);
+	return f;
 }
 
 std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size)

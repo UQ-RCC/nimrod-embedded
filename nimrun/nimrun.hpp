@@ -164,12 +164,30 @@ int write_pkcs12(EVP_PKEY *pkey, X509 *cert, const char *name, const char *pass,
 void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv);
 
 /* qpid.cpp */
-std::string generate_qpid_json(const fs::path& qpid_work, const char *user, const char *pass, const fs::path& cert_path, const char *cert_pass, uint16_t amqpPort, uint16_t managementPort);
+std::ostream& generate_qpid_json(
+	std::ostream& os,
+	const fs::path& qpid_work,
+	std::string_view user,
+	std::string_view pass,
+	const fs::path& cert_path,
+	std::string_view cert_pass,
+	uint16_t amqpPort,
+	uint16_t managementPort
+);
 pid_t launch_qpid(const fs::path& java, const fs::path& qpid_home, const fs::path& qpid_work, const fs::path& icp);
 
 /* nimrod.cpp */
-std::string build_nimrod_ini(const fs::path& dbpath);
-std::string build_nimrod_setupini(const fs::path& nimrod_home, const fs::path& nimrod_work, const char *user, const char *pass, const char *hostname, uint16_t port, const fs::path& cert_path);
+std::ostream& build_nimrod_ini(std::ostream& os, const fs::path& dbpath);
+std::ostream& build_nimrod_setupini(
+	std::ostream& os,
+	const fs::path& nimrod_home,
+	const fs::path& nimrod_work,
+	std::string_view user,
+	std::string_view pass,
+	std::string_view hostname,
+	uint16_t port,
+	const fs::path& cert_path
+);
 
 class nimcli
 {
@@ -201,8 +219,7 @@ private:
 };
 
 /* utils.cpp */
-void write_file(const fs::path& path, const char *s);
-void write_file(const fs::path& path, const std::string& s);
+std::ofstream open_write_file(const fs::path& path);
 std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size);
 
 std::string generate_random_password(size_t length);

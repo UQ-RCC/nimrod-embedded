@@ -20,74 +20,69 @@
 #include <sstream>
 #include <unistd.h>
 #include <fcntl.h>
-#include "json.hpp"
 #include "nimrun.hpp"
 
-using json = nlohmann::json;
-
-std::string build_nimrod_ini(const fs::path& dbpath)
+std::ostream& build_nimrod_ini(std::ostream& os, const fs::path& dbpath)
 {
-	std::string s =
-		"[config]\n"
-		"factory=au.edu.uq.rcc.nimrodg.impl.sqlite3.SQLite3APIFactory\n"
-		"\n"
-		"[sqlite3]\n"
-		"driver=org.sqlite.JDBC\n"
-		"url=jdbc:sqlite:"
-	;
-
-	s.append(dbpath);
-	s.append("\n");
-	return s;
+	os << "[config]" << std::endl;
+	os << "factory=au.edu.uq.rcc.nimrodg.impl.sqlite3.SQLite3APIFactory" << std::endl;
+	os << std::endl;
+	os << "[sqlite3]" << std::endl;
+	os << "driver=org.sqlite.JDBC" << std::endl;
+	os << "url=jdbc:sqlite:" << dbpath.u8string() << std::endl;
+	return os;
 }
 
-std::string build_nimrod_setupini(const fs::path& nimrod_home, const fs::path& nimrod_work, const char *user, const char *pass, const char *hostname, uint16_t port, const fs::path& cert_path)
+std::ostream& build_nimrod_setupini(
+	std::ostream& os,
+	const fs::path& nimrod_home,
+	const fs::path& nimrod_work,
+	std::string_view user,
+	std::string_view pass,
+	std::string_view hostname,
+	uint16_t port,
+	const fs::path& cert_path
+)
 {
-	fs::path agent = nimrod_home / "agents" / "agent-x86_64-pc-linux-musl";
-
-	std::ostringstream ss;
-
-	ss	<< "[config]\n"
-		<< "workdir=" << nimrod_work.u8string() << "/\n"
-		   "storedir=${workdir}/experiments\n"
-		   "\n"
-		   "[amqp]\n"
-		<< "uri=amqps://" << user << ":" << pass << "@" << hostname << ":" << port << "/default" << "\n"
-		<< "routing_key=iamthemaster\n"
-		<< "cert=" << cert_path.u8string() << "\n"
-		<< "no_verify_peer=false\n"
-		   "no_verify_host=false\n"
-		   "\n"
-		   "[transfer]\n"
-		<< "uri=file://${config/storedir}\n"
-		<< "cert=\n"
-		<< "no_verify_peer=false\n"
-		   "no_verify_host=false\n"
-		   "\n"
-		   "[agents]\n"
-		<< "x86_64-pc-linux-musl=" << agent.u8string() << "\n"
-		   "\n"
-		   "[agentmap]\n"
-		"Linux,x86_64=x86_64-pc-linux-musl\n"
-		"\n"
-		"[resource_types]\n"
-		"local=au.edu.uq.rcc.nimrodg.resource.LocalResourceType\n"
-		"remote=au.edu.uq.rcc.nimrodg.resource.RemoteResourceType\n"
-		"\n"
-		"[properties]\n"
-		"nimrod.sched.default.launch_penalty=-10\n"
-		"nimrod.sched.default.spawn_cap=10\n"
-		"nimrod.sched.default.job_buf_size=1000\n"
-		"nimrod.sched.default.job_buf_refill_threshold=100\n"
-		"nimrod.master.run_rescan_interval=60\n"
-		"nimrod.master.heart.expiry_retry_interval=5\n"
-		"nimrod.master.heart.expiry_retry_count=5\n"
-		"# Disable heartbeats for now because they're broken.\n"
-		"nimrod.master.heart.interval=0\n"
-		"nimrod.master.heart.missed_threshold=5\n"
-	;
-
-	return ss.str();
+	os << "[config]" << std::endl;
+	os << "workdir=" << nimrod_work.u8string() << fs::path::preferred_separator << std::endl;
+	os << "storedir=${workdir}/experiments" << fs::path::preferred_separator << std::endl;
+	os << std::endl;
+	os << "[amqp]" << std::endl;
+	os << "uri=amqps://" << user << ":" << pass << "@" << hostname << ":" << port << "/default" << std::endl;
+	os << "routing_key=iamthemaster" << std::endl;
+	os << "cert=" << cert_path.u8string() << std::endl;
+	os << "no_verify_peer=false" << std::endl;
+	os << "no_verify_host=false" << std::endl;
+	os << std::endl;
+	os << "[transfer]" << std::endl;
+	os << "uri=file://${config/storedir}" << fs::path::preferred_separator << std::endl;
+	os << "cert=" << std::endl;
+	os << "no_verify_peer=false" << std::endl;
+	os << "no_verify_host=false" << std::endl;
+	os << std::endl;
+	os << "[agents]" << std::endl;
+	os << "x86_64-pc-linux-musl=" << (nimrod_home / "agents" / "agent-x86_64-pc-linux-musl").u8string() << std::endl;
+	os << std::endl;
+	os << "[agentmap]" << std::endl;
+	os << "Linux,x86_64=x86_64-pc-linux-musl" << std::endl;
+	os << std::endl;
+	os << "[resource_types]" << std::endl;
+	os << "local=au.edu.uq.rcc.nimrodg.resource.LocalResourceType" << std::endl;
+	os << "remote=au.edu.uq.rcc.nimrodg.resource.RemoteResourceType" << std::endl;
+	os << std::endl;
+	os << "[properties]" << std::endl;
+	os << "nimrod.sched.default.launch_penalty=-10" << std::endl;
+	os << "nimrod.sched.default.spawn_cap=10" << std::endl;
+	os << "nimrod.sched.default.job_buf_size=1000" << std::endl;
+	os << "nimrod.sched.default.job_buf_refill_threshold=100" << std::endl;
+	os << "nimrod.master.run_rescan_interval=60" << std::endl;
+	os << "nimrod.master.heart.expiry_retry_interval=5" << std::endl;
+	os << "nimrod.master.heart.expiry_retry_count=5" << std::endl;
+	os << "# Disable heartbeats for now because they're broken." << std::endl;
+	os << "nimrod.master.heart.interval=0" << std::endl;
+	os << "nimrod.master.heart.missed_threshold=5" << std::endl;
+	return os;
 }
 
 nimcli::nimcli(const fs::path& java, const fs::path& openssh, const fs::path& tmpdir, const fs::path& nimrod_home, const std::string& platform, const fs::path& ini, const fs::path& fsroot, bool debug) :

@@ -18,15 +18,24 @@
  * limitations under the License.
  */
 #include <cstdint>
+#include <iomanip>
 #include "json.hpp"
 #include "nimrun.hpp"
 #include <cstdio>
 
 using json = nlohmann::json;
 
-std::string generate_qpid_json(const fs::path& qpid_work, const char *user, const char *pass, const fs::path& cert_path, const char *cert_pass, uint16_t amqpPort, uint16_t managementPort)
+std::ostream& generate_qpid_json(
+	std::ostream& os,
+	const fs::path& qpid_work,
+	std::string_view user,
+	std::string_view pass,
+	const fs::path& cert_path,
+	std::string_view cert_pass,
+	uint16_t amqpPort,
+	uint16_t managementPort
+)
 {
-	fs::path log_file = qpid_work / "log" / "qpid.log";
     json j = {
 		{"name", "${broker.name}"},
 		{"modelVersion", "7.0"},
@@ -46,7 +55,7 @@ std::string generate_qpid_json(const fs::path& qpid_work, const char *user, cons
 		{"brokerloggers", {
 			{"name", "logfile"},
 			{"type", "File"},
-			{"fileName", log_file},
+			{"fileName", qpid_work / "log" / "qpid.log"},
 			{"brokerloginclusionrules", {
 				{
 					{"name", "Root"},
@@ -134,8 +143,8 @@ std::string generate_qpid_json(const fs::path& qpid_work, const char *user, cons
 			{"protocols", {"HTTP"}}
 		});
 	}
-	
-	return j.dump(4, ' ');
+
+	return os << std::setw(4) << j;
 }
 
 #include <unistd.h>

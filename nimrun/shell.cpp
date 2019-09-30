@@ -26,13 +26,13 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 	for_each_delim(indata.get(), indata.get() + size, '\n', [
 		&regex_hashnim, &regex_hashnim_shebang, &regex_hashnim_parameter,
 		&has_shebang, &shebang, &parameters
-	](const std::string_view& v, size_t i) {
+	](std::string_view v, size_t i) {
 		std::match_results<std::string_view::const_iterator> m;
 
 		/* See if we have an initial #! as we'll need to replace it if we do. */
 		if(i == 0)
 		{
-			has_shebang = strncmp("#!", v.data(), std::min(v.size(), size_t(2))) == 0;
+			has_shebang = v.substr(0, std::min(v.size(), size_t(2))) == "#!";
 			return;
 		}
 
@@ -52,7 +52,7 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 		std::ofstream os(scriptpath, std::ios::out | std::ios::binary);
 		os.exceptions(std::ios::badbit | std::ios::failbit);
 
-		for_each_delim(indata.get(), indata.get() + size, '\n', [&os, &has_shebang, &shebang](const std::string_view& v, size_t i) {
+		for_each_delim(indata.get(), indata.get() + size, '\n', [&os, &has_shebang, &shebang](std::string_view v, size_t i) {
 			if(i == 0)
 			{
 				os << "#!" << shebang.value_or("/bin/sh") << '\n';

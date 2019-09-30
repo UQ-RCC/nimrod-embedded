@@ -26,6 +26,8 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <config.h>
+#include <iomanip>
+#include <fstream>
 #include "config.h"
 #include "nimrun.hpp"
 
@@ -79,6 +81,7 @@ struct nimrun_system_info {
 	fs::path tmpdir;
 
 	fs::path outdir;
+	fs::path outdir_stats;
 
 	fs::path java_home;
 	fs::path java;
@@ -103,6 +106,7 @@ static struct nimrun_state
 	nimrun_args args;
 	nimrun_system_info sysinfo;
 	fs::path planfile;
+	fs::path generated_script;
 	nimcli *cli;
 
 	resource_vector_type::const_iterator resit;
@@ -452,6 +456,7 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	sysinfo.nimrod_home = args.nimrod_home;
 	sysinfo.tmpdir = args.tmpdir;
 	sysinfo.outdir = args.outdir ? args.outdir : sysinfo.batch_info.outdir;
+	sysinfo.outdir_stats = sysinfo.outdir / (std::string("nimrod-") + sysinfo.batch_info.job_id);
 	sysinfo.java_home = args.java_home;
 	sysinfo.java = sysinfo.java_home / "bin" / "java";
 	sysinfo.qpid_home = args.qpid_home;
@@ -473,17 +478,15 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 }
 
 #include "json.hpp"
-static void dump_system_info_json(const nimrun_state& nimrun)
+static nlohmann::json dump_system_info_json(const nimrun_state& nimrun)
 {
-	using json = nlohmann::json;
-
 	const nimrun_system_info& si = nimrun.sysinfo;
 
-	json ips = json::array();
+	nlohmann::json ips = nlohmann::json::array();
 	for(const auto& it : si.interfaces)
 		ips.push_back(it);
 
-	json res = json::array();
+	nlohmann::json res = nlohmann::json::array();
 	for(const auto& it : si.nimrod_resources)
 	{
 		res.push_back({
@@ -494,7 +497,7 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		});
 	}
 
-	json nodes = json::object();
+	nlohmann::json nodes = nlohmann::json::object();
 	for(const auto& it : si.batch_info.nodes)
 		nodes[it.first] = it.second;
 
@@ -508,7 +511,7 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 		default: clustername = "unknown"; break;
 	}
 
-	json j = {
+	return {
 		{"cluster", clustername},
 		{"uname", {
 			{"sysname", si.uname.sysname},
@@ -527,6 +530,7 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 			{"outdir", si.batch_info.outdir}
 		}},
 		{"outdir", si.outdir},
+		{"outdir_stats", si.outdir_stats},
 		{"nimrod_resources", res},
 		{"openssh", si.openssh},
 		{"nimrod_home", si.nimrod_home},
@@ -557,10 +561,6 @@ static void dump_system_info_json(const nimrun_state& nimrun)
 			}},
 		}}
 	};
-
-	std::string ss = j.dump(4, ' ');
-
-	log_debug(log_level_debug, "%s\n", ss.c_str());
 }
 
 static exec_mode_t get_execmode(const char *_argv0) noexcept
@@ -595,7 +595,8 @@ int main(int argc, char **argv)
 	if(execmode == exec_mode_t::nimexec)
 	{
 		nimrun.planfile = sysinfo.tmpdir / "generated.pln";
-		process_shellfile(args.planfile, nimrun.planfile, sysinfo.tmpdir / "generated", argc - 1, argv + 1);
+		nimrun.generated_script = sysinfo.tmpdir / "generated";
+		process_shellfile(args.planfile, nimrun.planfile, nimrun.generated_script, argc - 1, argv + 1);
 	}
 	else
 	{
@@ -605,8 +606,12 @@ int main(int argc, char **argv)
 	if(!fs::is_regular_file(sysinfo.java))
 		return log_error("Unable to locate Java. Exiting...\n"), 1;
 
+	nlohmann::json jcfg = dump_system_info_json(nimrun);
 	if(args.debug >= log_level_debug)
-		dump_system_info_json(nimrun);
+	{
+		std::string ss = jcfg.dump(4, ' ');
+		log_debug(log_level_debug, "%s\n", ss.c_str());
+	}
 
 	if(sysinfo.cluster == cluster_t::unknown)
 	{
@@ -661,15 +666,44 @@ int main(int argc, char **argv)
 	}
 
 	/* Write the qpid config */
-	write_file(sysinfo.qpid_cfg, generate_qpid_json(
-		sysinfo.qpid_work,
-		sysinfo.username.c_str(),
-		sysinfo.password.c_str(),
-		sysinfo.pkcs12_cert,
-		sysinfo.password.c_str(),
-		0,
-		args.qpid_management_port
-	));
+	{
+		std::ofstream os(open_write_file(sysinfo.qpid_cfg));
+		generate_qpid_json(os,
+			sysinfo.qpid_work,
+			sysinfo.username,
+			sysinfo.password,
+			sysinfo.pkcs12_cert,
+			sysinfo.password,
+			0,
+			args.qpid_management_port
+		);
+	}
+
+	/* Create nimrod.ini. nimrod-setup.ini can't be done until later. */
+	fs::create_directory(nimrun.sysinfo.nimrod_work);
+	{
+		std::ofstream os(open_write_file(nimrun.sysinfo.nimrod_ini));
+		build_nimrod_ini(os, nimrun.sysinfo.nimrod_dbpath);
+	}
+
+	/*
+	 * Alright, things are about to start happening. Copy all our generated files so the user can
+	 * debug if something goes screwy.
+	 */
+	fs::create_directory(sysinfo.outdir_stats);
+	{
+		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
+		os << std::setw(4) << jcfg << std::endl;
+	}
+	fs::copy(nimrun.sysinfo.nimrod_ini, nimrun.sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+	fs::copy(nimrun.planfile, sysinfo.outdir_stats / "planfile.pln", fs::copy_options::overwrite_existing);
+	if(!nimrun.generated_script.empty())
+		fs::copy(nimrun.generated_script, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+	fs::copy(sysinfo.pem_key, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+	fs::copy(sysinfo.pem_cert, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+	fs::copy(sysinfo.pkcs12_cert, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+	fs::copy(sysinfo.qpid_cfg, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+
 
 	if(install_signal_handlers() < 0)
 		throw make_posix_exception(errno);
@@ -740,6 +774,8 @@ int main(int argc, char **argv)
 		usleep(500000);
 	}
 
+	/* Copy things for later investigation. */
+	fs::copy(sysinfo.nimrod_dbpath, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
 	return 0;
 }
 
@@ -781,17 +817,20 @@ static state_t handler_nimrod_createfiles(state_t state, state_mode_t mode, nimr
 		return state;
 
 	/* Can't do this until QPID's up. */
-	fs::create_directory(nimrun.sysinfo.nimrod_work);
-	write_file(nimrun.sysinfo.nimrod_ini, build_nimrod_ini(nimrun.sysinfo.nimrod_dbpath));
-	write_file(nimrun.sysinfo.nimrod_setupini, build_nimrod_setupini(
-		nimrun.sysinfo.nimrod_home,
-		nimrun.sysinfo.nimrod_work,
-		nimrun.sysinfo.username.c_str(),
-		nimrun.sysinfo.password.c_str(),
-		nimrun.sysinfo.simple_hostname.c_str(),
-		nimrun.qpid_port,
-		nimrun.sysinfo.pem_cert
-	));
+	{
+		std::ofstream os(open_write_file(nimrun.sysinfo.nimrod_setupini));
+		build_nimrod_setupini(
+			os,
+			nimrun.sysinfo.nimrod_home,
+			nimrun.sysinfo.nimrod_work,
+			nimrun.sysinfo.username.c_str(),
+			nimrun.sysinfo.password.c_str(),
+			nimrun.sysinfo.simple_hostname.c_str(),
+			nimrun.qpid_port,
+			nimrun.sysinfo.pem_cert
+		);
+	}
+	fs::copy(nimrun.sysinfo.nimrod_setupini, nimrun.sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
 
 	nimrun.nimrod_pid = 0;
 	return state_t::nimrod_init;
