@@ -138,9 +138,25 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 	return 0;
 }
 
-int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mode, nimrun_args *args)
+static exec_mode_t get_execmode(std::string_view argv0) noexcept
 {
-	if(mode == exec_mode_t::nimexec)
+    size_t idx = argv0.find_last_of(fs::path::preferred_separator);
+    if(idx != std::string_view::npos)
+        argv0 = argv0.substr(idx + 1);
+
+    //return exec_mode_t::nimexec;
+    if(argv0 == "nimexec")
+        return exec_mode_t::nimexec;
+    else
+        return exec_mode_t::nimrun;
+}
+
+int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args)
+{
+	args->argc = argc;
+	args->argv = argv;
+	args->mode = get_execmode(argv[0]);
+	if(args->mode == exec_mode_t::nimexec)
 	{
 		if(argc < 2)
 		{
@@ -175,14 +191,14 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mod
 	}
 
 
-	auto checkarg = [mode, err](const char *&val, const char *env, const char *arg) {
+	auto checkarg = [args, err](const char *&val, const char *env, const char *arg) {
 
 		if(val == nullptr || val[0] == '\0')
 			val = getenv(env);
 
 		if(val == nullptr || val[0] == '\0')
 		{
-			if(mode == exec_mode_t::nimexec)
+			if(args->mode == exec_mode_t::nimexec)
 				fprintf(err, "%s isn't set, cannot continue...\n", env);
 			else
 				fprintf(err, "%s isn't set. Please use the %s option.\n", env, arg);

@@ -31,16 +31,6 @@
 #include "config.h"
 #include "nimrun.hpp"
 
-enum class cluster_t : size_t
-{
-	rcc_tinaroo = 0,
-	rcc_awoonga,
-	rcc_flashlite,
-	qbi_wiener,
-	bsc_nord3,
-	unknown
-};
-
 /* These must match above. */
 static batch_info_proc_t cluster_info_procs[] = {
 	get_batch_info_rcc,
@@ -75,7 +65,7 @@ struct nimrun_system_info {
 
 	resource_vector_type nimrod_resources;
 
-	fs::path openssh;
+	std::optional<fs::path> openssh;
 
 	fs::path nimrod_home;
 	fs::path tmpdir;
@@ -256,7 +246,7 @@ static void do_reap(nimrun_state& nimrun) noexcept
 
 static int install_signal_handlers()
 {
-	struct sigaction new_action;
+	struct sigaction new_action{};
 	memset(&new_action, 0, sizeof(new_action));
 	new_action.sa_handler = [](int signum){
 		if(signum == SIGCHLD)
@@ -283,132 +273,35 @@ static int install_signal_handlers()
 	return 0;
 }
 
-static fs::path locate_openssh()
+static std::optional<fs::path> locate_openssh()
 {
-	fs::path ssh = "/usr/bin/ssh";
-	if(fs::exists(ssh))
-		return ssh;
+	constexpr std::string_view paths[] = {
+		"/usr/bin/ssh",
+		"/bin/ssh",
+		"/sbin/ssh"
+	};
 
-	ssh = "/bin/ssh";
-	if(fs::exists(ssh))
-		return ssh;
+	constexpr fs::perms execperms = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
 
-	ssh = "/sbin/ssh";
-	if(fs::exists(ssh))
-		return ssh;
+	fs::path path;
+	for(std::string_view sv : paths)
+	{
+		path.clear();
+		path.append(sv);
 
-	return "";
+		fs::file_status status = fs::status(path);
+		if(is_regular_file(status) && (status.permissions() & execperms) != fs::perms::none)
+			return path;
+	}
+
+	return std::optional<fs::path>();
 }
 
-static cluster_t detect_cluster(struct utsname *utsname) noexcept
+static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& args)
 {
-	/* This one's easy. */
-	const char *bsc_machine = getenv("BSC_MACHINE");
-	if(bsc_machine && !strcmp(bsc_machine, "nord3"))
-		return cluster_t::bsc_nord3;
-
-	const char *slurm_cluster_name = getenv("SLURM_CLUSTER_NAME");
-	/* Check for wiener. */
-	if(slurm_cluster_name && !strcmp(slurm_cluster_name, "wiener"))
-		return cluster_t::qbi_wiener;
-
-	/* Tinaroo, Awoonga, and Flashlite are a little trickier. */
-	struct utsname _utsname = *utsname;
-
-	/* We only care about the first part. */
-	char *dot = strstr(_utsname.nodename, ".");
-	if(dot != nullptr)
-		*dot = '\0';
-
-	{ /* Check for Tinaroo */
-		unsigned int num;
-		char c;
-
-		/* Management nodes. */
-		if(sscanf(_utsname.nodename, "tinmgmr%u", &num) == 1)
-			return cluster_t::rcc_tinaroo;
-
-		if(sscanf(_utsname.nodename, "tinmgr%u", &num) == 1)
-			return cluster_t::rcc_tinaroo;
-
-		/* Login nodes. */
-		if(sscanf(_utsname.nodename, "tinaroo%u", &num) == 1)
-			return cluster_t::rcc_tinaroo;
-
-		/* Compute nodes. */
-		if(sscanf(_utsname.nodename, "tn%u%c", &num, &c) == 2)
-			return cluster_t::rcc_tinaroo;
-
-		/* I have no idea what these nodes are. */
-		if(sscanf(_utsname.nodename, "ngw%u", &num) == 1)
-			return cluster_t::rcc_tinaroo;
-	}
-
-	{ /* Check for Awoonga */
-		unsigned int num;
-		char c;
-
-		/* Management nodes. */
-		if(sscanf(_utsname.nodename, "awongmgmr%u", &num) == 1)
-			return cluster_t::rcc_awoonga;
-
-		if(sscanf(_utsname.nodename, "awongmgr%u", &num) == 1)
-			return cluster_t::rcc_awoonga;
-
-		/* Login nodes. */
-		if(sscanf(_utsname.nodename, "awoonga%u", &num) == 1)
-			return cluster_t::rcc_awoonga;
-
-		/* Compute nodes. */
-		if(sscanf(_utsname.nodename, "aw%u%c", &num, &c) == 2)
-			return cluster_t::rcc_awoonga;
-
-		if(sscanf(_utsname.nodename, "aw%u", &num) == 1)
-			return cluster_t::rcc_awoonga;
-	}
-
-	{ /* Check for FlashLite */
-		unsigned int num;
-
-		/* Management nodes. */
-		if(sscanf(_utsname.nodename, "flm%u", &num) == 1)
-			return cluster_t::rcc_flashlite;
-
-		if(sscanf(_utsname.nodename, "flashmgr%u", &num) == 1)
-			return cluster_t::rcc_flashlite;
-
-		/* Login nodes. */
-		if(sscanf(_utsname.nodename, "flashlite%u", &num) == 1)
-			return cluster_t::rcc_flashlite;
-
-		/* Compute nodes. */
-		if(sscanf(_utsname.nodename, "fl%u", &num) == 1)
-			return cluster_t::rcc_flashlite;
-
-		if(sscanf(_utsname.nodename, "flvc%u", &num) == 1)
-			return cluster_t::rcc_flashlite;
-	}
-
-	{ /* Check for Wiener */
-		unsigned int n1, n2;
-
-		/* Comute nodes */
-		if(sscanf(_utsname.nodename, "gpunode-%u-%u", &n1, &n2) == 2)
-			return cluster_t::qbi_wiener;
-
-		/* Login nodes */
-		if(strcmp("wiener", _utsname.nodename) == 0)
-			return cluster_t::qbi_wiener;
-	}
-	return cluster_t::unknown;
-}
-
-static nimrun_system_info gather_system_info(const nimrun_args& args)
-{
-	nimrun_system_info sysinfo;
-
 	memset(&sysinfo.uname, 0, sizeof(sysinfo.uname));
-	uname(&sysinfo.uname);
+	if(uname(&sysinfo.uname) < 0)
+		throw make_posix_exception(errno);
 
 	sysinfo.cluster = detect_cluster(&sysinfo.uname);
 
@@ -449,10 +342,7 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 		return a.name < b.name;
 	});
 
-	sysinfo.openssh = locate_openssh();
-	if(sysinfo.openssh.empty())
-		throw make_posix_exception(ENOENT);
-
+	sysinfo.openssh			= locate_openssh();
 	sysinfo.nimrod_home		= args.nimrod_home;
 	sysinfo.tmpdir			= args.tmpdir;
 	sysinfo.outdir			= args.outdir ? args.outdir : sysinfo.batch_info.outdir;
@@ -473,15 +363,43 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 
 	if(get_ip_addrs(sysinfo.interfaces) < 0)
 		throw make_posix_exception(errno);
-
-	return sysinfo;
 }
 
 #include "json.hpp"
-static nlohmann::json dump_system_info_json(const nimrun_state& nimrun)
-{
-	const nimrun_system_info& si = nimrun.sysinfo;
 
+
+template<>
+struct nlohmann::adl_serializer<cluster_t>
+{
+	static void to_json(json& j, cluster_t val)
+	{
+		switch(val)
+		{
+			case cluster_t::rcc_flashlite:	j = "rcc_flashlite"; break;
+			case cluster_t::rcc_tinaroo:	j = "rcc_tinaroo"; break;
+			case cluster_t::rcc_awoonga:	j = "rcc_awoonga"; break;
+			case cluster_t::bsc_nord3:		j = "bsc_nord3"; break;
+			case cluster_t::qbi_wiener:		j = "qbi_wiener"; break;
+			case cluster_t::unknown:		j = "unknown"; break;
+		}
+	}
+};
+
+template<>
+struct nlohmann::adl_serializer<exec_mode_t>
+{
+	static void to_json(json& j, exec_mode_t mode)
+	{
+		switch(mode)
+		{
+			case exec_mode_t::nimrun:	j = "nimrun"; break;
+			case exec_mode_t::nimexec:	j = "nimexec"; break;
+		}
+	}
+};
+
+static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimrun_system_info& si)
+{
 	nlohmann::json ips = nlohmann::json::array();
 	for(const auto& it : si.interfaces)
 		ips.push_back(it);
@@ -501,18 +419,14 @@ static nlohmann::json dump_system_info_json(const nimrun_state& nimrun)
 	for(const auto& it : si.batch_info.nodes)
 		nodes[it.first] = it.second;
 
-	const char *clustername;
-	switch(si.cluster)
-	{
-		case cluster_t::rcc_flashlite: clustername = "rcc_flashlite"; break;
-		case cluster_t::rcc_tinaroo: clustername = "rcc_tinaroo"; break;
-		case cluster_t::rcc_awoonga: clustername = "rcc_awoonga"; break;
-		case cluster_t::bsc_nord3: clustername = "bsc_nord3"; break;
-		default: clustername = "unknown"; break;
-	}
+	nlohmann::json jargv = nlohmann::json::array();
+	for(int i = 0; i < args.argc; ++i)
+		jargv.push_back(args.argv[i]);
 
 	return {
-		{"cluster", clustername},
+		{"argv", jargv},
+		{"cluster", si.cluster},
+		{"execmode", args.mode},
 		{"uname", {
 			{"sysname", si.uname.sysname},
 			{"nodename", si.uname.nodename},
@@ -532,7 +446,7 @@ static nlohmann::json dump_system_info_json(const nimrun_state& nimrun)
 		{"outdir", si.outdir},
 		{"outdir_stats", si.outdir_stats},
 		{"nimrod_resources", res},
-		{"openssh", si.openssh},
+		{"openssh", si.openssh.value_or("")},
 		{"nimrod_home", si.nimrod_home},
 		{"tmpdir", si.tmpdir},
 		{"java_home", si.java_home},
@@ -563,39 +477,25 @@ static nlohmann::json dump_system_info_json(const nimrun_state& nimrun)
 	};
 }
 
-static exec_mode_t get_execmode(const char *_argv0) noexcept
-{
-    std::string_view argv0(_argv0);
-    size_t idx = argv0.find_last_of(fs::path::preferred_separator);
-    if(idx != std::string_view::npos)
-        argv0 = argv0.substr(idx + 1);
-
-    //return exec_mode_t::nimexec;
-    if(argv0 == "nimexec")
-        return exec_mode_t::nimexec;
-    else
-        return exec_mode_t::nimrun;
-}
-
 int main(int argc, char **argv)
 {
-	exec_mode_t execmode = get_execmode(argv[0]);
-
 	nimrun_args& args = nimrun.args;
-	int status = parse_arguments(argc, argv, stdout, stderr, execmode, &args);
+	int status = parse_arguments(argc, argv, stdout, stderr, &args);
 	if(status != 0)
 		return status;
 
 	if(args.version)
 		return 0;
 
+	gather_system_info(nimrun.sysinfo, args);
+
+
 	nimrun_system_info& sysinfo = nimrun.sysinfo;
-	sysinfo = gather_system_info(args);
 
 	/* It is expected that this directory is accessible from any node. */
 	fs::create_directory(sysinfo.outdir_stats);
 
-	if(execmode == exec_mode_t::nimexec)
+	if(args.mode == exec_mode_t::nimexec)
 	{
 		nimrun.planfile = sysinfo.outdir_stats / "planfile.pln";
 		nimrun.generated_script = sysinfo.outdir_stats / "generated";
@@ -607,12 +507,14 @@ int main(int argc, char **argv)
 		fs::copy(nimrun.planfile, sysinfo.outdir_stats / "planfile.pln", fs::copy_options::overwrite_existing);
 	}
 
-	nlohmann::json jcfg = dump_system_info_json(nimrun);
+	nlohmann::json jcfg = dump_system_info_json(args, sysinfo);
 	{
 		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
 		os << std::setw(4) << jcfg << std::endl;
 	}
 
+	if(!sysinfo.openssh)
+		return log_error("Unable to locate OpenSSH. Exiting...\n"), 1;
 
 	if(!fs::is_regular_file(sysinfo.java))
 		return log_error("Unable to locate Java. Exiting...\n"), 1;
@@ -699,7 +601,7 @@ int main(int argc, char **argv)
 	if(install_signal_handlers() < 0)
 		throw make_posix_exception(errno);
 
-	nimcli nimrod(sysinfo.java, sysinfo.openssh, sysinfo.tmpdir, sysinfo.nimrod_home, "x86_64-pc-linux-musl", sysinfo.nimrod_ini, sysinfo.outdir, args.debug >= log_level_nimrod_debug);
+	nimcli nimrod(sysinfo.java, sysinfo.openssh.value(), sysinfo.tmpdir, sysinfo.nimrod_home, "x86_64-pc-linux-musl", sysinfo.nimrod_ini, sysinfo.outdir, args.debug >= log_level_nimrod_debug);
 
 	nimrun.cli = &nimrod;
 	nimrun.interrupt = false;
@@ -766,7 +668,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Copy things for later investigation. */
-	fs::copy(sysinfo.nimrod_dbpath, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
+
+	if(fs::exists(sysinfo.nimrod_dbpath))
+		fs::copy(sysinfo.nimrod_dbpath, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
 	return 0;
 }
 

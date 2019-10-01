@@ -83,6 +83,20 @@ auto make_protector(D& deleter)
 	return ptr_type(&deleter, [](D* d) { (*d)(); });
 }
 
+
+enum class cluster_t : size_t
+{
+	rcc_tinaroo = 0,
+	rcc_awoonga,
+	rcc_flashlite,
+	qbi_wiener,
+	bsc_nord3,
+	unknown
+};
+
+/* detect.cpp */
+cluster_t detect_cluster(struct utsname *utsname) noexcept;
+
 /* args.cpp */
 
 enum class exec_mode_t
@@ -97,6 +111,9 @@ struct nimrun_args
 {
 	nimrun_args() noexcept;
 
+	int			argc;
+	char		**argv;
+	exec_mode_t mode;
 	uint32_t	version;
 	uint32_t	debug;
 	const char	*planfile;
@@ -108,7 +125,7 @@ struct nimrun_args
 	const char	*nimrod_home;
 };
 
-int parse_arguments(int argc, char **argv, FILE *out, FILE *err, exec_mode_t mode, nimrun_args *args);
+int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
 
 using node_map_type = std::unordered_map<std::string, size_t>;
 struct batch_info_t

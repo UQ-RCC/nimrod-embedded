@@ -58,9 +58,8 @@ std::string generate_random_password(size_t length)
 
 	std::string s(length, '\0');
 	file_ptr f(fopen("/dev/urandom", "rb"));
-
 	if(!f)
-		throw std::runtime_error("Can't open /dev/urandom");
+		throw make_posix_exception(errno);
 
 	fread(&s[0], s.length(), 1, f.get());
 	for(size_t i = 0; i < s.length(); ++i)
@@ -71,7 +70,7 @@ std::string generate_random_password(size_t length)
 
 std::system_error make_posix_exception(int err)
 {
-	return std::system_error(err, std::generic_category());
+	return std::system_error(err, std::system_category());
 }
 
 pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept
