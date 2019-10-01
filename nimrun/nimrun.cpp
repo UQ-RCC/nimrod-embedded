@@ -453,23 +453,23 @@ static nimrun_system_info gather_system_info(const nimrun_args& args)
 	if(sysinfo.openssh.empty())
 		throw make_posix_exception(ENOENT);
 
-	sysinfo.nimrod_home = args.nimrod_home;
-	sysinfo.tmpdir = args.tmpdir;
-	sysinfo.outdir = args.outdir ? args.outdir : sysinfo.batch_info.outdir;
-	sysinfo.outdir_stats = sysinfo.outdir / (std::string("nimrod-") + sysinfo.batch_info.job_id);
-	sysinfo.java_home = args.java_home;
-	sysinfo.java = sysinfo.java_home / "bin" / "java";
-	sysinfo.qpid_home = args.qpid_home;
-	sysinfo.qpid_work = sysinfo.tmpdir / "qpid-work";
-	sysinfo.qpid_cfg = sysinfo.tmpdir / "qpid-initial-config.json";
-	sysinfo.nimrod_work = sysinfo.tmpdir / "nimrod-work";
-	sysinfo.nimrod_dbpath = sysinfo.nimrod_work / "nimrod.db";
-	sysinfo.nimrod_ini = sysinfo.nimrod_work / "nimrod.ini";
-	sysinfo.nimrod_setupini = sysinfo.nimrod_work / "nimrod-setup.ini";
-	sysinfo.pem_cert = sysinfo.tmpdir / "cert.pem";
-	sysinfo.pem_key = sysinfo.tmpdir / "key.pem";
-	sysinfo.pkcs12_cert = sysinfo.tmpdir / "cert.p12";
-	sysinfo.password = generate_random_password(32);
+	sysinfo.nimrod_home		= args.nimrod_home;
+	sysinfo.tmpdir			= args.tmpdir;
+	sysinfo.outdir			= args.outdir ? args.outdir : sysinfo.batch_info.outdir;
+	sysinfo.outdir_stats	= sysinfo.outdir / (std::string("nimrod-") + sysinfo.batch_info.job_id);
+	sysinfo.java_home		= args.java_home;
+	sysinfo.java			= sysinfo.java_home / "bin" / "java";
+	sysinfo.qpid_home		= args.qpid_home;
+	sysinfo.qpid_work		= sysinfo.tmpdir / "qpid-work";
+	sysinfo.qpid_cfg		= sysinfo.outdir_stats / "qpid-initial-config.json";
+	sysinfo.nimrod_work		= sysinfo.tmpdir / "nimrod-work";
+	sysinfo.nimrod_dbpath	= sysinfo.nimrod_work / "nimrod.db";
+	sysinfo.nimrod_ini		= sysinfo.outdir_stats / "nimrod.ini";
+	sysinfo.nimrod_setupini	= sysinfo.outdir_stats / "nimrod-setup.ini";
+	sysinfo.pem_cert		= sysinfo.outdir_stats / "cert.pem";
+	sysinfo.pem_key			= sysinfo.outdir_stats / "key.pem";
+	sysinfo.pkcs12_cert		= sysinfo.outdir_stats / "cert.p12";
+	sysinfo.password		= generate_random_password(32);
 
 	if(get_ip_addrs(sysinfo.interfaces) < 0)
 		throw make_posix_exception(errno);
@@ -592,21 +592,31 @@ int main(int argc, char **argv)
 	nimrun_system_info& sysinfo = nimrun.sysinfo;
 	sysinfo = gather_system_info(args);
 
+	/* It is expected that this directory is accessible from any node. */
+	fs::create_directory(sysinfo.outdir_stats);
+
 	if(execmode == exec_mode_t::nimexec)
 	{
-		nimrun.planfile = sysinfo.tmpdir / "generated.pln";
-		nimrun.generated_script = sysinfo.tmpdir / "generated";
+		nimrun.planfile = sysinfo.outdir_stats / "planfile.pln";
+		nimrun.generated_script = sysinfo.outdir_stats / "generated";
 		process_shellfile(args.planfile, nimrun.planfile, nimrun.generated_script, argc - 1, argv + 1);
 	}
 	else
 	{
 		nimrun.planfile = args.planfile;
+		fs::copy(nimrun.planfile, sysinfo.outdir_stats / "planfile.pln", fs::copy_options::overwrite_existing);
 	}
+
+	nlohmann::json jcfg = dump_system_info_json(nimrun);
+	{
+		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
+		os << std::setw(4) << jcfg << std::endl;
+	}
+
 
 	if(!fs::is_regular_file(sysinfo.java))
 		return log_error("Unable to locate Java. Exiting...\n"), 1;
 
-	nlohmann::json jcfg = dump_system_info_json(nimrun);
 	if(args.debug >= log_level_debug)
 	{
 		std::string ss = jcfg.dump(4, ' ');
@@ -685,25 +695,6 @@ int main(int argc, char **argv)
 		std::ofstream os(open_write_file(nimrun.sysinfo.nimrod_ini));
 		build_nimrod_ini(os, nimrun.sysinfo.nimrod_dbpath);
 	}
-
-	/*
-	 * Alright, things are about to start happening. Copy all our generated files so the user can
-	 * debug if something goes screwy.
-	 */
-	fs::create_directory(sysinfo.outdir_stats);
-	{
-		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
-		os << std::setw(4) << jcfg << std::endl;
-	}
-	fs::copy(nimrun.sysinfo.nimrod_ini, nimrun.sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-	fs::copy(nimrun.planfile, sysinfo.outdir_stats / "planfile.pln", fs::copy_options::overwrite_existing);
-	if(!nimrun.generated_script.empty())
-		fs::copy(nimrun.generated_script, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-	fs::copy(sysinfo.pem_key, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-	fs::copy(sysinfo.pem_cert, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-	fs::copy(sysinfo.pkcs12_cert, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-	fs::copy(sysinfo.qpid_cfg, sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
-
 
 	if(install_signal_handlers() < 0)
 		throw make_posix_exception(errno);
@@ -830,7 +821,6 @@ static state_t handler_nimrod_createfiles(state_t state, state_mode_t mode, nimr
 			nimrun.sysinfo.pem_cert
 		);
 	}
-	fs::copy(nimrun.sysinfo.nimrod_setupini, nimrun.sysinfo.outdir_stats, fs::copy_options::overwrite_existing);
 
 	nimrun.nimrod_pid = 0;
 	return state_t::nimrod_init;
