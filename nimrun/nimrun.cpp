@@ -175,12 +175,14 @@ static const char *state_strings[] = {
 	nullptr
 };
 
-constexpr static size_t log_level_none = 0;
-constexpr static size_t log_level_debug = 1;
-constexpr static size_t log_level_nimrod = 2;
-constexpr static size_t log_level_nimrod_debug = 3;
-constexpr static size_t log_level_state = 4;
-constexpr static size_t log_level_signal = 5;
+enum {
+	log_level_none = 0,
+	log_level_debug = 1,
+	log_level_nimrod = 2,
+	log_level_nimrod_debug = 3,
+	log_level_state = 4,
+	log_level_signal = 5,
+};
 
 static void log_debug(uint32_t level, const char *fmt, ...) noexcept
 {
@@ -675,6 +677,8 @@ int main(int argc, char **argv)
 
 static state_t handler_none(state_t state, state_mode_t mode, nimrun_state& nimrun)
 {
+	(void)state;
+	(void)mode;
 	return state_t::qpid_wait;
 }
 
@@ -693,7 +697,9 @@ static state_t handler_qpid_wait(state_t state, state_mode_t mode, nimrun_state&
 	}
 
 	std::vector<uint16_t> ports = get_listening_ports(nimrun.qpid);
-	std::remove(ports.begin(), ports.end(), nimrun.args.qpid_management_port);
+	if(auto it = std::find(ports.begin(), ports.end(), nimrun.args.qpid_management_port); it != ports.end())
+		ports.erase(it);
+
 	if(ports.empty())
 		return state;
 
@@ -768,9 +774,14 @@ static state_t handler_nimrod_common_resource(state_t state, state_mode_t mode, 
 				);
 			}
 		}
-		else
+		else if(state == state_t::nimrod_assign)
 		{
 			nimrun.nimrod_pid = nimrun.cli->assign_resource(nimrun.resit->name.c_str(), "localexp");
+		}
+		else
+		{
+			/* invalid */
+			return state_t::nimrod_cleanup;
 		}
 
 		++nimrun.resit;
@@ -784,7 +795,21 @@ static state_t handler_nimrod_common_resource(state_t state, state_mode_t mode, 
 
 		nimrun.resloop_started = false;
 		if(nimrun.resit == nimrun.sysinfo.nimrod_resources.end())
-			return static_cast<state_t>(static_cast<std::underlying_type_t<state_t>>(state) + 1);
+		{
+			switch(state)
+			{
+				case state_t::nimrod_addresource:
+					state = state_t::nimrod_assign;
+					break;
+				case state_t::nimrod_assign:
+					state = state_t::nimrod_master;
+					break;
+				default:
+					/* invalid */
+					state = state_t::nimrod_cleanup;
+					break;
+			}
+		}
 	}
 
 	return state;
@@ -824,7 +849,21 @@ static state_t handler_nimrod_common(state_t state, state_mode_t mode, nimrun_st
 		if(nimrun.nimrod_ret != 0)
 			return state_t::nimrod_cleanup;
 
-		state = static_cast<state_t>(static_cast<std::underlying_type_t<state_t>>(state) + 1);
+		switch(state)
+		{
+			case state_t::nimrod_init:
+				state = state_t::nimrod_addexp;
+				break;
+			case state_t::nimrod_addexp:
+				state = state_t::nimrod_addresource;
+				break;
+			case state_t::nimrod_master:
+				/* valid */
+			default:
+				/* invalid */
+				state = state_t::nimrod_cleanup;
+				break;
+		}
 	}
 
 	return state;
