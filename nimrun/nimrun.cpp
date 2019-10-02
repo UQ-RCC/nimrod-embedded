@@ -275,10 +275,11 @@ static int install_signal_handlers()
 
 static std::optional<fs::path> locate_openssh()
 {
+	using namespace std::literals;
 	constexpr std::string_view paths[] = {
-		"/usr/bin/ssh",
-		"/bin/ssh",
-		"/sbin/ssh"
+		"/usr/bin/ssh"sv,
+		"/bin/ssh"sv,
+		"/sbin/ssh"sv
 	};
 
 	constexpr fs::perms execperms = fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec;
