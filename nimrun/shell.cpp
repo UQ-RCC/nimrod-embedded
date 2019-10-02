@@ -81,7 +81,7 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 		os << "\tredirect stderr to stderr.txt" << std::endl;
 
 		os << "\texec " << scriptpath;
-		for(size_t i = 1; i < argc; ++i)
+		for(int i = 1; i < argc; ++i)
 			os << " " << std::quoted(argv[i]);
 		os << std::endl;
 

@@ -316,11 +316,9 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 	sysinfo.username = passwd->pw_name;
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
-	sysinfo.batch_info = {
-		.job_id = "",
-		.outdir = cwd.c_str(),
-		.ompthreads = 1
-	};
+	sysinfo.batch_info.job_id = "";
+	sysinfo.batch_info.outdir = cwd.c_str();
+	sysinfo.batch_info.ompthreads = 1;
 
 	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(sysinfo.cluster)];
 	if(infoproc != nullptr)

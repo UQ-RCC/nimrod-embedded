@@ -19,17 +19,17 @@ endif()
 
 if(GIT_LOCAL_CHANGES MATCHES "DIRTY")
 	set(GIT_DESCRIBE "${GIT_DESCRIBE}-${GIT_LOCAL_CHANGES}")
-	set(GIT_DIRTY "true")
+	set(GIT_DIRTY 1)
 else()
-	set(GIT_DIRTY "false")
+	set(GIT_DIRTY 0)
 endif()
 
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")
-configure_file("${PROJECT_SOURCE_DIR}/config.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/config.cpp")
+configure_file("${PROJECT_SOURCE_DIR}/config.c.in" "${CMAKE_CURRENT_BINARY_DIR}/config.c")
 
 add_executable(nimrun
 	"${CMAKE_CURRENT_BINARY_DIR}/config.h"
-	"${CMAKE_CURRENT_BINARY_DIR}/config.cpp"
+	"${CMAKE_CURRENT_BINARY_DIR}/config.c"
 
 	nimrun.cpp
 	ip.cpp

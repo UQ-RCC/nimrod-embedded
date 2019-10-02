@@ -12,7 +12,7 @@ typedef struct
 	{
 		const char *sha1;
 		const char *description;
-		bool dirty;
+		int dirty;
 	} git;
 	struct
 	{

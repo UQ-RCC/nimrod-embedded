@@ -109,8 +109,6 @@ enum class exec_mode_t
 
 struct nimrun_args
 {
-	nimrun_args() noexcept;
-
 	int			argc;
 	char		**argv;
 	exec_mode_t mode;

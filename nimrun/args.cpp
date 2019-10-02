@@ -60,22 +60,11 @@ static const char *USAGE_OPTIONS =
 "  --nimrod-home           The Nimrod home directory. If unspecified, use $NIMROD_HOME\n"
 "";
 
-nimrun_args::nimrun_args() noexcept :
-	version(0),
-	debug(0),
-	planfile(nullptr),
-	tmpdir(nullptr),
-	outdir(nullptr),
-	qpid_management_port(0),
-	qpid_home(nullptr),
-	java_home(nullptr),
-	nimrod_home(nullptr)
-{}
-
 int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 {
 	parg_state ps{};
 	parg_init(&ps);
+
 
 	memset(args, 0, sizeof(nimrun_args));
 

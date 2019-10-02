@@ -42,7 +42,7 @@ batch_info_t get_batch_info_bsc()
 
     for(const char *s = lsb_mcpu_hosts;;)
     {
-        unsigned int n;
+        int n;
         int ret = sscanf(s, "%63s %zu%n", hostname, &count, &n);
         if(ret == EOF)
             break;
