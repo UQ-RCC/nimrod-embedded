@@ -79,9 +79,9 @@ The following parameter types and declarations are supported:
 
 ## How to Use Embedded Nimrod
 
-Using Embedded Nimrod is as simple as:
-* adding `#NIM` specifications to your existing PBSPro job submission script
-* increasing the resource requests to match the number of jobs you want to run in parallel.
+Using Embedded Nimrod is as simple as 
+* writing a PBS Pro job submission to request the computation resources necessary to host concurrent tasks on a single host
+* writing a Nimrod plan file for the "experiment"
 * submitting your PBS job script 
 * waiting for PBS job to start and for the _magic_ to happen
 
@@ -91,16 +91,12 @@ While the job is running, the batch system will deploy and run a personal Nimrod
 ### A Sample Job Script 
 
 ```bash
-#!/usr/bin/env nimexec
+#!/bin/bash
+#
 #PBS -N NimrodDemo
 #PBS -A UQ-RCC
 #PBS -l walltime=168:00:00
 #PBS -l select=4:ncpus=12:ompthreads=2:mem=24GB
-
-#NIM shebang /bin/bash
-#NIM parameter i integer range from 1 to 3 step 1
-#NIM parameter x float range from 5.0E2 to 5.2E2 step 0.2E2
-#NIM parameter y float range from 1.5 to 1.7 step 0.2
 
 # In this demo I will run 24 tasks in parallel (with 2cpus & 4GB per task) in 4 half a HPC nodes.
 # The select statement is requesting ncpus=12 (i.e. 6x2cpus) and mem=24GB (i.e. 6x4GB) 
@@ -108,7 +104,86 @@ While the job is running, the batch system will deploy and run a personal Nimrod
 # The walltime is the total for the entire job (i.e. a multiple of the single task walltime)
 
 
-echo "$i,$x,$y"
+#Locate the Nimrod plan file
+PLANFILE="NIMROD/plan"
+
+
+#Load the embedded nimrod module
+module load embedded-nimrod
+
+# Compile plan file to check it is OK
+
+nimrod compile --no-out $PLANFILE
+if [ $? -ne 0 ]; then 
+  echo "There was a problem with the compilation of your plan file. Better go check it!" 
+  exit 1
+fi
+
+#Bail out here if you just want to check the plan file is good
+#exit
+
+# Now nimrun the plan file 
+nimrun $PLANFILE
+
+```
+
+### A Sample Plan File 
+```
+// Sweep across 3 numerical parameters and write out a fake CSV line for each combination ... not very realistic!
+
+parameter i integer range from 1 to 3 step 1 
+parameter x float range from 5.0E2 to 5.2E2 step 0.2E2 
+parameter y float range from 1.5 to 1.7 step 0.2 
+
+parameter t text "NimrodDemo"
+
+task main
+  // 0. Nimrod Setup
+  onerror ignore	    // or fail ... is an option!
+  redirect stdout to out    // like OU in PBS
+  redirect stderr to err    // like ER in PBS
+
+  // Now down to business
+
+  exec echo "$i,$x,$y"
+
+  // Do not forget to copy back the stdout and stderr files for each data set.
+  copy node:out root:OE/$t.out.$jobindex.txt
+  copy node:err root:OE/$t.err.$jobindex.txt
+endtask
+
+```
+
+### Plan file compilation
+
+When you compile the plan file, it is parsed and checked for syntax errors.
+Do not proceed with running the experiment if the plan file fails to parse correctly.
+
+### Plan file gotchas
+The plan file parser is Java code. 
+When it is not happy with your plan file it will spit out lots of dire-looking messages. 
+Do not despair!
+
+Here are a couple of examples of how to avoid screens of java error messages:
+
+#### Parameter values in shexec commands
+
+Basically, you need to escape quote any reference to a Nimrod parameter when you are within a quoted `shexec` string:
+```
+parameter t text "Wombat"
+shexec "R CMD BATCH --no-save --no-restore '--args i=\"$i\"' MyRCode/I_Dig_\"$t\"_Burrows.R Rout"
+```
+
+#### Be careful near underscores
+
+You can use a plan file parameter in a file path that includes the `_` character as long as you are careful to delineate the variable.
+The problem arises because the `_` is a valid character for a variable name in shell.
+
+```
+parameter i integer range from 1 to 5 step 1
+parameter t text "Echidna"
+
+copy node:output.csv root:${t}_Spines_1_${i}.csv
 ```
 
 #### Beware of System Load
@@ -127,7 +202,132 @@ We are working on a better mechanism to handle this situation.
 
 #### Environment variables and modules don't inherit across nodes
 
-When using multi-node jobs, environment variables (and thus modules) aren't carried over. If a custom environment or modules are required, it is recommended that load any required modules within the job script.
+When using multi-node jobs, environment variables (and thus modules) aren't carried over. If a custom environment or modules are required, it is recommended that you write a wrapper shell script and `exec` that via the planfile.
+
+## Usage Scenarios
+
+In the following scenarios you would need to create a PBS job script based on the sample provided above.
+
+### Running a program against a set of input filenames
+
+Say you need to run the same program against a list of filenames that are XML input files.
+
+#### Plan file
+
+```
+// Sweep over a set of tar filenames in the TAR directory
+
+parameter f files select anyof "INPUTS/*.xml"  
+parameter t text "ThisRun"
+
+task main
+  // 0. Nimrod Setup
+  onerror fail       //or stop right away
+  redirect stdout to out
+  redirect stderr to err
+
+  // Now down to business
+  // 1. Set up the work area on the Node
+  exec mkdir INPUTS
+  exec mkdir OUTPUTS
+  exec mkdir CODE
+
+  // 2. Copy over the XML file (note that $f includes the "INPUTS/" part of the name
+  copy root:$f node:$f
+
+  // 3. Copy over the Code as a tar file and unpack it
+  copy root:CODE.tar node:CODE.tar
+  exec tar xf CODE.tar
+  exec rm -f CODE.tar
+
+  // 4. Take a selfie of what we are working with
+  exec ls -salR 
+
+  // 5. Run the program with the current XML input file
+  exec CODE/myprogram.exe -i $f -o OUTPUTS/out.dat
+
+  // 6. Have a look at the OUTPUTS folder and copy the out.dat file back
+  exec ls -salR OUTPUTS
+  copy node:OUTPUTS/out.dat root:OUTPUTS/$t.$jobindex.dat
+
+  // Do not forget to copy back the stdout and stderr files for each data set.
+  copy node:out root:OE/$t.out.$jobindex.txt
+  copy node:err root:OE/$t.err.$jobindex.txt
+endtask
+```
+
+
+### Running an R program for different values of a single parameter
+
+We see this a lot. 
+R scripts running for different values of an input parameter.
+
+#### The R Code
+
+```R
+#Simple script to test our ability to pass in a specific value for the index
+
+#https://www.r-bloggers.com/passing-arguments-to-an-r-script-from-command-lines/
+#https://www.r-bloggers.com/including-arguments-in-r-cmd-batch-mode/
+#
+#call using 
+# R CMD BATCH --no-save --no-restore '--args i=4' test.R test.out
+
+##We need to capture all the arguments provided at the command line
+args=(commandArgs(TRUE))
+
+## The args variable is a list of character vectors that needs to be decomposed.
+
+if(length(args)==0){
+    #If no arguments were provided ... probably should quit
+    stop("No arguments supplied.")
+}else{
+    #arguments were provided so need to pull apart the args variable
+    for(ii in 1:length(args)){
+         eval(parse(text=args[[ii]]))
+    }
+}
+
+
+#i=3
+x=c(1,2,3,4,5)
+y=x*x
+
+#Show us the power of the passed-in parameter!
+i
+x[i]
+y[i]
+```
+
+#### The Plan File
+
+```
+parameter i integer range from 1 to 5 step 1
+parameter t text "TestingR"
+task main
+  // 0. Nimrod Setup
+  onerror ignore        // or fail ... is an option!
+  redirect stdout to out    // like OU in PBS
+  redirect stderr to err    // like ER in PBS
+
+  // Now down to business
+  copy root:test.R node:Rscript
+
+  //must escape quote the values for plan file parameters
+  shexec "R CMD BATCH --no-save --no-restore '--args i=\"${i}\"' Rscript Rout"
+
+
+
+  // Do not forget to copy back the stdout and stderr files for each data set.
+  copy node:out root:OE/$t.out.$i.txt
+  copy node:err root:OE/$t.err.$i.txt
+  copy node:Rout root:OE/Rout.$i
+endtask
+```
+
+
+
+
 
 ## License
 
