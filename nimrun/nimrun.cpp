@@ -33,12 +33,14 @@
 
 /* These must match above. */
 static batch_info_proc_t cluster_info_procs[] = {
-	get_batch_info_rcc,
-	get_batch_info_rcc,
-	get_batch_info_rcc,
-	get_batch_info_wiener,
-	get_batch_info_bsc,
-	nullptr
+	get_batch_info_slurm,	/* generic_slurm */
+	get_batch_info_lsf,		/* generic_lsf */
+	get_batch_info_rcc,		/* rcc_tinaroo */
+	get_batch_info_rcc,		/* rcc_awoonga */
+	get_batch_info_rcc,		/* rcc_flashlite */
+	get_batch_info_slurm,	/* qbi_wiener */
+	get_batch_info_lsf,		/* bsc_nord3 */
+	nullptr					/* unknown */
 };
 
 struct nimrun_resource_info
@@ -370,6 +372,8 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 
 NLOHMANN_JSON_SERIALIZE_ENUM(cluster_t, {
     {cluster_t::unknown,		"unknown"},
+	{cluster_t::generic_slurm,	"generic_slurm"},
+	{cluster_t::generic_lsf,	"generic_lsf"},
 	{cluster_t::rcc_tinaroo,	"rcc_tinaroo"},
 	{cluster_t::rcc_awoonga,	"rcc_awoonga"},
 	{cluster_t::rcc_flashlite,	"rcc_flashlite"},

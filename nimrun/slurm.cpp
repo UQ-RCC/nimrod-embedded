@@ -58,7 +58,7 @@ static std::vector<char> read_all(FILE *f, size_t bufsize = 1024)
 	return data;
 }
 
-batch_info_t get_batch_info_wiener()
+batch_info_t get_batch_info_slurm()
 {
 	batch_info_t bi;
 

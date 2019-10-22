@@ -41,9 +41,8 @@ add_executable(nimrun
 	minipbs.hpp
 	minipbs.cpp
 
-	wiener.cpp
-
-	bsc.cpp
+	slurm.cpp
+	lsf.cpp
 
 	qpid.cpp
 	nimrun.hpp

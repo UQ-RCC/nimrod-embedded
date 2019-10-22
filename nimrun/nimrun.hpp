@@ -86,7 +86,9 @@ auto make_protector(D& deleter)
 
 enum class cluster_t : size_t
 {
-	rcc_tinaroo = 0,
+	generic_slurm = 0,
+	generic_lsf,
+	rcc_tinaroo,
 	rcc_awoonga,
 	rcc_flashlite,
 	qbi_wiener,
@@ -139,11 +141,11 @@ using batch_info_proc_t = batch_info_t(*)();
 /* rcc.cpp */
 batch_info_t get_batch_info_rcc();
 
-/* wiener.cpp */
-batch_info_t get_batch_info_wiener();
+/* slurm.cpp */
+batch_info_t get_batch_info_slurm();
 
-/* bsc.cpp */
-batch_info_t get_batch_info_bsc();
+/* lsf.cpp */
+batch_info_t get_batch_info_lsf();
 
 /* ip.cpp */
 int get_ip_addrs(std::vector<std::string>& addrs);
