@@ -46,27 +46,6 @@ public:
 
 static pbs_error_category_t pbs_error_category;
 
-static void read_resource_attribute(const struct attrl *a, batch_info_t& pi) noexcept
-{
-	/* Can't use it here, it's always 1 no matter what we do. */
-	// if(!strcmp("ompthreads", a->resource))
-	// {
-	// 	pi.ompthreads = static_cast<size_t>(std::atoll(a->value));
-	// 	return;
-	// }
-
-	if(!strcmp("select", a->resource))
-	{
-		constexpr const char *ompneedle = "ompthreads=";
-		const char *ompstart = strstr(a->value, ompneedle);
-		if(ompstart == nullptr)
-			return;
-
-		pi.ompthreads = static_cast<size_t>(std::atoll(ompstart + strlen(ompneedle)));
-		return;
-	}
-}
-
 static void read_exechost_attribute(const struct attrl *a, batch_info_t& pi)
 {
 	/* tn109c/5*4+tn111c/3*4+tn119a/5*4+tn223b/3*41 */
@@ -121,23 +100,17 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 		throw make_pbs_exception(pbs_errno);
 	}
 
-	pi.ompthreads = 0;
 	for(struct attrl *a = jobStatus->attribs; a ; a = a->next)
 	{
-		if(!strcmp(a->name, ATTR_l))
-			read_resource_attribute(a, pi);
-		else if(!strcmp(a->name, ATTR_exechost))
+		if(!strcmp(a->name, ATTR_exechost))
+		{
 			read_exechost_attribute(a, pi);
+			break;
+		}
 	}
-
-	/* Default to 1 if unspecified. */
-	if(pi.ompthreads <= 0)
-		pi.ompthreads = 1;
-
-	pi.job_id = job;
 }
 
-batch_info_t get_batch_info_rcc()
+batch_info_t get_batch_info_pbs()
 {
 	batch_info_t bi;
 
@@ -147,8 +120,11 @@ batch_info_t get_batch_info_rcc()
 	if(!(bi.outdir = getenv("PBS_O_WORKDIR")))
 		throw std::runtime_error("PBS_O_WORKDIR isn't set");
 
-	/* Try load it from the system first. If that fails, load it from where
-	 * we know it is. */
+	/*
+	 * RCC's clusters have libpbs.so in an odd place.
+	 * Try to load it from LD_LIBRARY_PATH. If that fails,
+	 * fallback to /opt/pbs/lib/libpbs.so
+	 */
 	dl_ptr pbs(minipbs_loadlibrary("libpbs.so"));
 	if(!pbs)
 		pbs.reset(minipbs_loadlibrary("/opt/pbs/lib/libpbs.so"));
@@ -157,5 +133,10 @@ batch_info_t get_batch_info_rcc()
 		throw std::runtime_error("can't load PBS library");
 
 	get_pbs_info(bi.job_id, bi);
+
+	bi.ompthreads = 1;
+	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
+		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
+
 	return bi;
 }

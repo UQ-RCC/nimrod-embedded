@@ -128,8 +128,7 @@ batch_info_t get_batch_info_slurm()
 
 	bi.ompthreads = 1;
 
-	const char *_ompthreads = getenv("OMPTHREADS");
-	if(_ompthreads != nullptr)
+	if(const char *_ompthreads = getenv("SLURM_CPUS_PER_TASK"))
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
 
 	return bi;

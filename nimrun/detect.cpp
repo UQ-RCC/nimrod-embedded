@@ -24,14 +24,18 @@
 cluster_t detect_cluster(struct utsname *utsname) noexcept
 {
 	/* This one's easy. */
-	const char *bsc_machine = getenv("BSC_MACHINE");
-	if(bsc_machine && !strcmp(bsc_machine, "nord3"))
-		return cluster_t::bsc_nord3;
+	if(const char *bsc_machine = getenv("BSC_MACHINE"))
+	{
+		if(!strcmp(bsc_machine, "nord3"))
+			return cluster_t::bsc_nord3;
+	}
 
-	const char *slurm_cluster_name = getenv("SLURM_CLUSTER_NAME");
-	/* Check for wiener. */
-	if(slurm_cluster_name && !strcmp(slurm_cluster_name, "wiener"))
-		return cluster_t::qbi_wiener;
+	if(const char *slurm_cluster_name = getenv("SLURM_CLUSTER_NAME"))
+	{
+		if(!strcmp(slurm_cluster_name, "wiener"))
+			return cluster_t::qbi_wiener;
+		return cluster_t::generic_slurm;
+	}
 
 	/* Tinaroo, Awoonga, and Flashlite are a little trickier. */
 	struct utsname _utsname = *utsname;

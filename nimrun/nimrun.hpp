@@ -86,7 +86,8 @@ auto make_protector(D& deleter)
 
 enum class cluster_t : size_t
 {
-	generic_slurm = 0,
+	generic_pbs = 0,
+	generic_slurm,
 	generic_lsf,
 	rcc_tinaroo,
 	rcc_awoonga,
@@ -138,8 +139,8 @@ struct batch_info_t
 
 using batch_info_proc_t = batch_info_t(*)();
 
-/* rcc.cpp */
-batch_info_t get_batch_info_rcc();
+/* pbs.cpp */
+batch_info_t get_batch_info_pbs();
 
 /* slurm.cpp */
 batch_info_t get_batch_info_slurm();

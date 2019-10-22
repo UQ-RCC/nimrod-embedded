@@ -56,8 +56,7 @@ batch_info_t get_batch_info_lsf()
 
 	bi.ompthreads = 1;
 
-	const char *_ompthreads = getenv("OMPTHREADS");
-	if(_ompthreads != nullptr)
+	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
 
 	return bi;

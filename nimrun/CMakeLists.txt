@@ -37,10 +37,10 @@ add_executable(nimrun
 
 	detect.cpp
 
-	rcc.cpp
 	minipbs.hpp
 	minipbs.cpp
 
+	pbs.cpp
 	slurm.cpp
 	lsf.cpp
 
