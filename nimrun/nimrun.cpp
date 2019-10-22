@@ -368,36 +368,19 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 
 #include "json.hpp"
 
+NLOHMANN_JSON_SERIALIZE_ENUM(cluster_t, {
+    {cluster_t::unknown,		"unknown"},
+	{cluster_t::rcc_tinaroo,	"rcc_tinaroo"},
+	{cluster_t::rcc_awoonga,	"rcc_awoonga"},
+	{cluster_t::rcc_flashlite,	"rcc_flashlite"},
+	{cluster_t::qbi_wiener,		"qbi_wiener"},
+	{cluster_t::bsc_nord3,		"bsc_nord3"}
+});
 
-template<>
-struct nlohmann::adl_serializer<cluster_t>
-{
-	static void to_json(json& j, cluster_t val)
-	{
-		switch(val)
-		{
-			case cluster_t::rcc_flashlite:	j = "rcc_flashlite"; break;
-			case cluster_t::rcc_tinaroo:	j = "rcc_tinaroo"; break;
-			case cluster_t::rcc_awoonga:	j = "rcc_awoonga"; break;
-			case cluster_t::bsc_nord3:		j = "bsc_nord3"; break;
-			case cluster_t::qbi_wiener:		j = "qbi_wiener"; break;
-			case cluster_t::unknown:		j = "unknown"; break;
-		}
-	}
-};
-
-template<>
-struct nlohmann::adl_serializer<exec_mode_t>
-{
-	static void to_json(json& j, exec_mode_t mode)
-	{
-		switch(mode)
-		{
-			case exec_mode_t::nimrun:	j = "nimrun"; break;
-			case exec_mode_t::nimexec:	j = "nimexec"; break;
-		}
-	}
-};
+NLOHMANN_JSON_SERIALIZE_ENUM(exec_mode_t, {
+	{exec_mode_t::nimrun,		"nimrun"},
+	{exec_mode_t::nimexec,		"nimexec"}
+});
 
 static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimrun_system_info& si)
 {
