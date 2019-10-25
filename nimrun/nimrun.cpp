@@ -508,9 +508,8 @@ int main(int argc, char **argv)
 	if(cluster == cluster_t::unknown)
 		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
 
-	nimrun.sysinfo.cluster = cluster;
-	gather_system_info(nimrun.sysinfo, args, cluster);
 
+	gather_system_info(nimrun.sysinfo, args, cluster);
 
 	nimrun_system_info& sysinfo = nimrun.sysinfo;
 
