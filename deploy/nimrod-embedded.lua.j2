@@ -8,12 +8,18 @@ local base_path         = "{{ root_dir }}"
 local nimrod_home       = "{{ nimrod_home }}"
 local java_home         = "{{ java_home }}"
 local qpid_home         = "{{ qpid_home }}"
+{% if cluster_name is defined %}
+local cluster_name      = "{{ cluster_name }}"
+{% endif %}
 
 whatis("Name: Embedded Nimrod")
 whatis("Version: "..nimrod_version)
 whatis("URL: https://rcc.uq.edu.au/nimrod")
 
 help([[
+To exec a #NIM script:
+	nimexec /path/to/script
+
 To run a planfile:
     nimrun /path/to/planfile
 
@@ -24,6 +30,9 @@ To validate a planfile:
 setenv("JAVA_HOME", java_home)
 setenv("NIMROD_HOME", nimrod_home)
 setenv("QPID_HOME", qpid_home)
+{% if cluster_name is defined %}
+setenv("NIMRUN_CLUSTER", cluster_name);
+{% endif %}
 
 prepend_path("PATH", pathJoin(java_home, "bin"))
 prepend_path("PATH", pathJoin(base_path, "bin"))

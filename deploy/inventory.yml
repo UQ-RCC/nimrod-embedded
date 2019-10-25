@@ -10,24 +10,37 @@ all:
     nimrun_binary: "/path/to/nimrun"
 
   hosts:
-    tinaroo:
+    # Actual HPCs
+    tinaroo: # Works for Awoonga and FlashLite too
       ansible_ssh_host: tinaroo.rcc.uq.edu.au
       root_dir: "/sw7/RCC/NimrodG/embedded-{{ nimrod_version }}"
       module_path_lmod: /sw7/Modules/RCC/local
-    nord3:
-      ansible_ssh_host: nord1.bsc.es
-      root_dir: /home/bsc19/bsc19175/nimrod-embedded
-      module_path_modules: "{{ root_dir }}/etc/modulefiles"
-    # Test ones
-    tinaroo_test:
-      ansible_ssh_host: tinaroo.rcc.uq.edu.au
-      root_dir: "/home/uquser/embedded-nimrod-{{ nimrod_version }}"
-      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
-    nimroddevserver:
-      root_dir: /home/ubuntu/embedded-nimrod
-      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
-      module_path_modules: "{{ root_dir }}/etc/modulefiles"
+      cluster_name: generic_pbs
     wiener:
       ansible_ssh_host: wiener.hpc.dc.uq.edu.au
       root_dir: "/clusterdata/uquser/embedded-nimrod-{{ nimrod_version }}"
       module_path_lmod: "{{ root_dir }}/etc/modulefiles"
+      cluster_name: generic_slurm
+    nord3:
+      ansible_ssh_host: nord1.bsc.es
+      root_dir: /home/bsc19/bsc19175/nimrod-embedded
+      module_path_modules: "{{ root_dir }}/etc/modulefiles"
+      cluster_name: generic_lsf
+
+
+    # For testing
+    tinaroo_test:
+      ansible_ssh_host: tinaroo.rcc.uq.edu.au
+      root_dir: "/home/uquser/embedded-nimrod-{{ nimrod_version }}"
+      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
+      cluster_name: generic_pbs
+    nimroddevserver:
+      root_dir: /home/ubuntu/embedded-nimrod
+      module_path_lmod: "{{ root_dir }}/etc/modulefiles"
+      module_path_modules: "{{ root_dir }}/etc/modulefiles"
+      cluster_name: generic_pbs
+
+# Add any hosts you want to install Embedded Nimrod on here
+nimrod_hosts:
+  hosts:
+    nimroddevserver:

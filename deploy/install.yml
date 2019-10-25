@@ -21,10 +21,9 @@
         checksum: "sha256:{{ nimrod_sha256 }}"
       register: nimrod_tarball
 
-- hosts: 'tinaroo_test'
+- hosts: 'nimrod_hosts'
   become: no
   vars:
-    #root_dir: /opt/nimrod-embedded
     bin_dir: "{{ root_dir }}/bin"
     java_home: "{{ root_dir }}/lib/jvm/jdk-11.0.2"
     qpid_home: "{{ root_dir }}/opt/qpid-broker/7.1.2"

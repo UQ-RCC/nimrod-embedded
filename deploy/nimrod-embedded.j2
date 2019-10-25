@@ -9,12 +9,18 @@ set base_path       "{{ root_dir }}"
 set nimrod_home     "{{ nimrod_home }}"
 set java_home       "{{ java_home }}"
 set qpid_home       "{{ qpid_home }}"
+{% if cluster_name is defined %}
+set cluster_name    "{{ cluster_name }}"
+{% endif %}
 
 module-whatis "Name: Embedded Nimrod"
 module-whatis "Version: $nimrod_version"
 module-whatis "URL: https://rcc.uq.edu.au/nimrod"
 
 proc ModulesHelp { } {
+	puts stderr "To exec a #NIM script:"
+	puts stderr "    nimexec /path/to/script"
+	puts stderr ""
 	puts stderr "To run a planfile:"
 	puts stderr "    nimrun /path/to/planfile"
 	puts stderr ""
@@ -25,6 +31,9 @@ proc ModulesHelp { } {
 setenv JAVA_HOME $java_home
 setenv NIMROD_HOME $nimrod_home
 setenv QPID_HOME $qpid_home
+{% if cluster_name is defined %}
+setenv NIMRUN_CLUSTER $cluster_name
+{% endif %}
 
 prepend-path PATH $java_home/bin
 prepend-path PATH $base_path/bin
