@@ -402,8 +402,13 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 	for(int i = 0; i < args.argc; ++i)
 		jargv.push_back(args.argv[i]);
 
+	nlohmann::json env;
+	for(size_t i = 0; environ[i] != nullptr; ++i)
+		env[i] = environ[i];
+
 	return {
 		{"argv", jargv},
+		{"environment", env},
 		{"cluster", si.cluster},
 		{"execmode", args.mode},
 		{"uname", {
