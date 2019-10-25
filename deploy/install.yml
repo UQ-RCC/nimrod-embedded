@@ -32,6 +32,11 @@
     - name: create folders
       file: path={{ item }} state=directory
       loop: ["{{ root_dir }}", "{{ bin_dir }}", "{{ java_home }}", "{{ qpid_home }}"]
+    - name: copy nimrun
+      copy:
+        src: "{{ nimrun_binary }}"
+        dest: "{{ bin_dir }}/nimrun"
+        mode: 0755
     - name: extract openjdk tarball
       unarchive:
         src: "{{ hostvars.localhost.openjdk_tarball.dest }}"

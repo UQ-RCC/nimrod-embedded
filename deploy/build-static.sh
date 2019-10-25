@@ -1,13 +1,13 @@
 #!/bin/bash -e
 ##
-# nimrun build script for BSC
+# nimrun static build script
 # Run on DEMORGOGON
 ##
 
 export CMAKE=cmake
 export PROJECT_BASE=${HOME}/rcchome/staging/nimrod-embedded
 export CMAKE_TOOLCHAIN_FILE=${HOME}/Documents/Coding/nimrodg-agent/cibuild/x86_64-pc-linux-musl.cmake
-export CMAKE_BINARY_DIR=${PROJECT_BASE}/build-bsc
+export CMAKE_BINARY_DIR=${PROJECT_BASE}/build-static
 
 # We piggyback off the agent's build environment so I don't need
 # to rebuild LibreSSL
