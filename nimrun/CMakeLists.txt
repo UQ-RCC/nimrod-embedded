@@ -35,8 +35,6 @@ add_executable(nimrun
 	ip.cpp
 	ssl.cpp
 
-	detect.cpp
-
 	minipbs.hpp
 	minipbs.cpp
 

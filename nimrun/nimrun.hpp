@@ -89,16 +89,8 @@ enum class cluster_t : size_t
 	generic_pbs = 0,
 	generic_slurm,
 	generic_lsf,
-	rcc_tinaroo,
-	rcc_awoonga,
-	rcc_flashlite,
-	qbi_wiener,
-	bsc_nord3,
 	unknown
 };
-
-/* detect.cpp */
-cluster_t detect_cluster(struct utsname *utsname) noexcept;
 
 /* args.cpp */
 
@@ -114,9 +106,10 @@ struct nimrun_args
 {
 	int			argc;
 	char		**argv;
-	exec_mode_t mode;
+	exec_mode_t	mode;
 	uint32_t	version;
 	uint32_t	debug;
+	const char	*cluster;
 	const char	*planfile;
 	const char	*tmpdir;
 	const char	*outdir;

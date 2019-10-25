@@ -36,11 +36,6 @@ static batch_info_proc_t cluster_info_procs[] = {
 	get_batch_info_pbs,		/* generic_pbs */
 	get_batch_info_slurm,	/* generic_slurm */
 	get_batch_info_lsf,		/* generic_lsf */
-	get_batch_info_pbs,		/* rcc_tinaroo */
-	get_batch_info_pbs,		/* rcc_awoonga */
-	get_batch_info_pbs,		/* rcc_flashlite */
-	get_batch_info_slurm,	/* qbi_wiener */
-	get_batch_info_lsf,		/* bsc_nord3 */
 	nullptr					/* unknown */
 };
 
@@ -303,13 +298,27 @@ static std::optional<fs::path> locate_openssh()
 	return std::optional<fs::path>();
 }
 
-static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& args)
+#include "json.hpp"
+
+NLOHMANN_JSON_SERIALIZE_ENUM(cluster_t, {
+    {cluster_t::unknown,		"unknown"},
+	{cluster_t::generic_pbs,	"generic_pbs"},
+	{cluster_t::generic_slurm,	"generic_slurm"},
+	{cluster_t::generic_lsf,	"generic_lsf"}
+});
+
+NLOHMANN_JSON_SERIALIZE_ENUM(exec_mode_t, {
+	{exec_mode_t::nimrun,		"nimrun"},
+	{exec_mode_t::nimexec,		"nimexec"}
+});
+
+static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& args, cluster_t cluster)
 {
+	sysinfo.cluster = cluster;
+
 	memset(&sysinfo.uname, 0, sizeof(sysinfo.uname));
 	if(uname(&sysinfo.uname) < 0)
 		throw make_posix_exception(errno);
-
-	sysinfo.cluster = detect_cluster(&sysinfo.uname);
 
 	errno = 0;
 	struct passwd *passwd = getpwuid(geteuid());
@@ -325,21 +334,20 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 	sysinfo.batch_info.outdir = cwd.c_str();
 	sysinfo.batch_info.ompthreads = 1;
 
-	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(sysinfo.cluster)];
-	if(infoproc != nullptr)
-	{
-		sysinfo.batch_info = infoproc();
+	batch_info_proc_t infoproc = cluster_info_procs[static_cast<size_t>(cluster)];
+	assert(infoproc != nullptr);
 
-		for(const auto& e : sysinfo.batch_info.nodes)
-		{
-			nimrun_resource_info ri;
-			ri.name = e.first;
-			ri.uri = "ssh://";
-			ri.uri.append(ri.name);
-			ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
-			ri.local = e.first == sysinfo.simple_hostname;
-			sysinfo.nimrod_resources.emplace_back(std::move(ri));
-		}
+	sysinfo.batch_info = infoproc();
+
+	for(const auto& e : sysinfo.batch_info.nodes)
+	{
+		nimrun_resource_info ri;
+		ri.name = e.first;
+		ri.uri = "ssh://";
+		ri.uri.append(ri.name);
+		ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
+		ri.local = e.first == sysinfo.simple_hostname;
+		sysinfo.nimrod_resources.emplace_back(std::move(ri));
 	}
 
 	std::sort(sysinfo.nimrod_resources.begin(), sysinfo.nimrod_resources.end(), [](const auto& a, const auto& b){
@@ -368,25 +376,6 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 	if(get_ip_addrs(sysinfo.interfaces) < 0)
 		throw make_posix_exception(errno);
 }
-
-#include "json.hpp"
-
-NLOHMANN_JSON_SERIALIZE_ENUM(cluster_t, {
-    {cluster_t::unknown,		"unknown"},
-	{cluster_t::generic_pbs,	"generic_pbs"},
-	{cluster_t::generic_slurm,	"generic_slurm"},
-	{cluster_t::generic_lsf,	"generic_lsf"},
-	{cluster_t::rcc_tinaroo,	"rcc_tinaroo"},
-	{cluster_t::rcc_awoonga,	"rcc_awoonga"},
-	{cluster_t::rcc_flashlite,	"rcc_flashlite"},
-	{cluster_t::qbi_wiener,		"qbi_wiener"},
-	{cluster_t::bsc_nord3,		"bsc_nord3"}
-});
-
-NLOHMANN_JSON_SERIALIZE_ENUM(exec_mode_t, {
-	{exec_mode_t::nimrun,		"nimrun"},
-	{exec_mode_t::nimexec,		"nimexec"}
-});
 
 static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimrun_system_info& si)
 {
@@ -467,6 +456,44 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 	};
 }
 
+static cluster_t detect_cluster(const char *cluster)
+{
+	/* Used for autodetection. */
+	struct env_t
+	{
+		const char	*name;
+		cluster_t	cluster;
+	} envs[] = {
+		{"PBS_JOBID",			cluster_t::generic_pbs},
+		{"PBS_O_WORKDIR",		cluster_t::generic_pbs},
+
+		{"SLURM_CLUSTER_NAME",	cluster_t::generic_slurm},
+		{"SLURM_JOB_ID",		cluster_t::generic_slurm},
+		{"SLURM_SUBMIT_DIR",	cluster_t::generic_slurm},
+		{"SLURM_JOB_NODELIST",	cluster_t::generic_slurm},
+		{"SLURM_NODELIST",		cluster_t::generic_slurm},
+
+		{"LSB_JOBID",			cluster_t::generic_lsf},
+		{"LS_SUBCWD",			cluster_t::generic_lsf},
+		{"LSB_MCPU_HOSTS",		cluster_t::generic_lsf},
+	};
+
+	if(cluster != nullptr)
+		return nlohmann::json(cluster).get<cluster_t>();
+
+	/*
+	 * This is very rudimentary detection code. It just checks for existence
+	 * of known environment variables.
+	 */
+	for(const env_t& e : envs)
+	{
+		if(const char *val = getenv(e.name); val != nullptr && val[0] != '\0')
+			return e.cluster;
+	}
+
+	return cluster_t::unknown;
+}
+
 int main(int argc, char **argv)
 {
 	nimrun_args& args = nimrun.args;
@@ -477,7 +504,12 @@ int main(int argc, char **argv)
 	if(args.version)
 		return 0;
 
-	gather_system_info(nimrun.sysinfo, args);
+	cluster_t cluster = detect_cluster(args.cluster);
+	if(cluster == cluster_t::unknown)
+		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
+
+	nimrun.sysinfo.cluster = cluster;
+	gather_system_info(nimrun.sysinfo, args, cluster);
 
 
 	nimrun_system_info& sysinfo = nimrun.sysinfo;

@@ -28,6 +28,7 @@
 
 #define ARGDEF_VERSION        		'v'
 #define ARGDEF_DEBUG        		'd'
+#define ARGDEF_CLUSTER				'c'
 #define ARGDEF_TMPDIR				301
 #define ARGDEF_OUTDIR				302
 #define ARGDEF_QPID_MANAGEMENT_PORT	303
@@ -39,6 +40,7 @@
 static struct parg_option argdefs[] = {
 	{"version",					PARG_NOARG,		nullptr,	ARGDEF_VERSION},
 	{"debug",					PARG_NOARG,		nullptr,	ARGDEF_DEBUG},
+	{"cluster",					PARG_REQARG,	nullptr,	ARGDEF_CLUSTER},
 	{"tmpdir",					PARG_REQARG,	nullptr,	ARGDEF_TMPDIR},
 	{"outdir",					PARG_REQARG,	nullptr,	ARGDEF_OUTDIR},
 	{"qpid-management-port",	PARG_REQARG,	nullptr,	ARGDEF_QPID_MANAGEMENT_PORT},
@@ -52,6 +54,10 @@ static struct parg_option argdefs[] = {
 static const char *USAGE_OPTIONS =
 "  -v, --version           Display version information\n"
 "  -d, --debug             Enable Debugging\n"
+"  -c, --cluster           The cluster name/type. If unspecified, use $NIMRUN_CLUSTER.\n"
+"                          If $NIMRUN_CLUSTER isn't set or is empty, attempt to autodetect.\n"
+"                          Valid options are:\n"
+"                          - generic_{pbs,slurm,lsf}\n"
 "  --tmpdir                The temporary directory to use. If unspecified, use $TMPDIR\n"
 "  --outdir                The output directory to use. If unspecified, use the one provided by the batch system\n"
 "  --qpid-management-port  Set the Qpid HTTP management port. Omit or set to 0 to disable\n"
@@ -68,7 +74,7 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 
 	memset(args, 0, sizeof(nimrun_args));
 
-	for(int c; (c = parg_getopt_long(&ps, argc, argv, "vd", argdefs, nullptr)) != -1; )
+	for(int c; (c = parg_getopt_long(&ps, argc, argv, "vdc", argdefs, nullptr)) != -1; )
 	{
 		switch(c)
 		{
@@ -81,6 +87,10 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 
 			case ARGDEF_DEBUG:
 				++args->debug;
+				break;
+
+			case ARGDEF_CLUSTER:
+				args->cluster = ps.optarg;
 				break;
 
 			case ARGDEF_TMPDIR:
@@ -154,6 +164,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 		}
 		args->version = 0;
 		args->debug = 5;
+		args->cluster = nullptr;
 		args->planfile = argv[1];
 		args->tmpdir = nullptr;
 		args->outdir = nullptr;
@@ -209,6 +220,13 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 
 	if(!checkarg(args->nimrod_home, "NIMROD_HOME", "--nimrod-home"))
 		return 1;
+
+	/* This isn't an error, we can attempt to autodetect otherwise. */
+	if(args->cluster == nullptr || args->cluster[0] == '\0')
+		args->cluster = getenv("NIMRUN_CLUSTER");
+
+	if(args->cluster != nullptr && args->cluster[0] == '\0')
+		args->cluster = nullptr;
 
 	return 0;
 }
