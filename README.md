@@ -104,7 +104,7 @@ While the job is running, the batch system will deploy and run a personal Nimrod
 # The walltime is the total for the entire job (i.e. a multiple of the single task walltime)
 
 
-echo "$i,$x,$y"
+echo "$NIMROD_VAR_i,$NIMROD_VAR_x,$NIMROD_VAR_y"
 ```
 
 #### Beware of System Load
