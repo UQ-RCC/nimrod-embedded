@@ -172,7 +172,7 @@ int write_pem_cert(X509 *cert, FILE *fp) noexcept;
 int write_pkcs12(EVP_PKEY *pkey, X509 *cert, const char *name, const char *pass, FILE *fp) noexcept;
 
 /* shell.cpp */
-void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv);
+void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, const fs::path& outdir, const fs::path& errdir, int argc, char **argv);
 
 /* qpid.cpp */
 std::ostream& generate_qpid_json(

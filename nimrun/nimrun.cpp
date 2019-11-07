@@ -84,6 +84,11 @@ struct nimrun_system_info {
 	fs::path pem_cert;
 	fs::path pem_key;
 	fs::path pkcs12_cert;
+	fs::path stdout_path;
+	fs::path stderr_path;
+
+	fs::path stdout_path_rel;
+	fs::path stderr_path_rel;
 
 	std::vector<std::string> interfaces;
 	std::string password;
@@ -354,11 +359,13 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 		return a.name < b.name;
 	});
 
+	std::string statsname = std::string("nimrod-") + sysinfo.batch_info.job_id;
+
 	sysinfo.openssh			= locate_openssh();
 	sysinfo.nimrod_home		= args.nimrod_home;
 	sysinfo.tmpdir			= args.tmpdir;
 	sysinfo.outdir			= args.outdir ? args.outdir : sysinfo.batch_info.outdir;
-	sysinfo.outdir_stats	= sysinfo.outdir / (std::string("nimrod-") + sysinfo.batch_info.job_id);
+	sysinfo.outdir_stats	= sysinfo.outdir / statsname;
 	sysinfo.java_home		= args.java_home;
 	sysinfo.java			= sysinfo.java_home / "bin" / "java";
 	sysinfo.qpid_home		= args.qpid_home;
@@ -371,6 +378,14 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 	sysinfo.pem_cert		= sysinfo.outdir_stats / "cert.pem";
 	sysinfo.pem_key			= sysinfo.outdir_stats / "key.pem";
 	sysinfo.pkcs12_cert		= sysinfo.outdir_stats / "cert.p12";
+	sysinfo.stdout_path		= sysinfo.outdir_stats / "out";
+	sysinfo.stderr_path		= sysinfo.outdir_stats / "err";
+
+	/* Can't use these, needs to compile with GCC 7.2 */
+	//sysinfo.stdout_path_rel	= fs::relative(sysinfo.stdout_path, sysinfo.outdir);
+	//sysinfo.stderr_path_rel	= fs::relative(sysinfo.stderr_path, sysinfo.outdir);
+	sysinfo.stdout_path_rel	= fs::path(statsname) / "out";
+	sysinfo.stderr_path_rel	= fs::path(statsname) / "err";
 	sysinfo.password		= generate_random_password(32);
 
 	if(get_ip_addrs(sysinfo.interfaces) < 0)
@@ -445,6 +460,10 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 		{"pem_cert", si.pem_cert},
 		{"pem_key", si.pem_key},
 		{"pkcs12_cert", si.pkcs12_cert},
+		{"stdout_path", si.stdout_path},
+		{"stderr_path", si.stderr_path},
+		{"stdout_path_rel", si.stdout_path_rel},
+		{"stderr_path_rel", si.stderr_path_rel},
 		{"password", si.password},
 		{"interfaces", ips},
 		{"compile_info", {
@@ -520,12 +539,19 @@ int main(int argc, char **argv)
 
 	/* It is expected that this directory is accessible from any node. */
 	fs::create_directory(sysinfo.outdir_stats);
+	fs::create_directory(sysinfo.stdout_path);
+	fs::create_directory(sysinfo.stderr_path);
 
 	if(args.mode == exec_mode_t::nimexec)
 	{
 		nimrun.planfile = sysinfo.outdir_stats / "planfile.pln";
 		nimrun.generated_script = sysinfo.outdir_stats / "generated";
-		process_shellfile(args.planfile, nimrun.planfile, nimrun.generated_script, argc - 1, argv + 1);
+		process_shellfile(
+			args.planfile,
+			nimrun.planfile, nimrun.generated_script,
+			sysinfo.stdout_path_rel, sysinfo.stderr_path_rel,
+			argc - 1, argv + 1
+		);
 	}
 	else
 	{

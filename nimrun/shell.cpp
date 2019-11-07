@@ -5,7 +5,7 @@
 #include <optional>
 #include "nimrun.hpp"
 
-void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, int argc, char **argv)
+void process_shellfile(const fs::path& file, const fs::path& planpath, const fs::path& scriptpath, const fs::path& outdir, const fs::path& errdir, int argc, char **argv)
 {
 	/* The number of memory allocations these do is disgusting. */
 	std::regex regex_hashnim("^#NIM\\s+.+$", std::regex_constants::ECMAScript);
@@ -85,8 +85,11 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 			os << " " << std::quoted(argv[i]);
 		os << std::endl;
 
-		os << "\tcopy node:stdout.txt root:stdout-$jobindex.txt" << std::endl;
-		os << "\tcopy node:stderr.txt root:stderr-$jobindex.txt" << std::endl;
+		fs::path o = outdir / "stdout-$jobindex.txt";
+		fs::path e = errdir / "stderr-$jobindex.txt";
+
+		os << "\tcopy node:stdout.txt root:" << std::quoted(o.c_str()) << std::endl;
+		os << "\tcopy node:stderr.txt root:" << std::quoted(e.c_str()) << std::endl;
 		os << "endtask" << std::endl;
 
 		fs::permissions(planpath, fs::perms::owner_read | fs::perms::owner_write);
