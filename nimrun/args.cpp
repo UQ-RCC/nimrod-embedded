@@ -163,7 +163,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 			return 2;
 		}
 		args->version = 0;
-		args->debug = 5;
+		args->debug = 3;
 		args->cluster = nullptr;
 		args->planfile = argv[1];
 		args->tmpdir = nullptr;
