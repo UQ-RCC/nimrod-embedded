@@ -73,9 +73,9 @@ std::ostream& build_nimrod_setupini(
 	os << std::endl;
 	os << "[properties]" << std::endl;
 	os << "nimrod.sched.default.launch_penalty=-10" << std::endl;
-	os << "nimrod.sched.default.spawn_cap=10" << std::endl;
-	os << "nimrod.sched.default.job_buf_size=1000" << std::endl;
-	os << "nimrod.sched.default.job_buf_refill_threshold=100" << std::endl;
+	os << "nimrod.sched.default.spawn_cap=2147483647" << std::endl;
+	os << "nimrod.sched.default.job_buf_size=10000" << std::endl;
+	os << "nimrod.sched.default.job_buf_refill_threshold=1000" << std::endl;
 	os << "nimrod.master.run_rescan_interval=60" << std::endl;
 	os << "nimrod.master.heart.expiry_retry_interval=5" << std::endl;
 	os << "nimrod.master.heart.expiry_retry_count=5" << std::endl;
