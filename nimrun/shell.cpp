@@ -76,7 +76,7 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 			os << p.second << std::endl;
 		os << std::endl;
 		os << "task main" << std::endl;
-		os << "\tonerror fail" << std::endl;
+		os << "\tonerror ignore" << std::endl;
 		os << "\tredirect stdout to stdout.txt" << std::endl;
 		os << "\tredirect stderr to stderr.txt" << std::endl;
 
