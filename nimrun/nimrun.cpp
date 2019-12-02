@@ -417,6 +417,10 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 	for(int i = 0; i < args.argc; ++i)
 		jargv.push_back(args.argv[i]);
 
+	nlohmann::json jfwdenv = nlohmann::json::array();
+	for(const std::string& s : si.batch_info.fwdenv)
+		jfwdenv.push_back(s);
+
 	nlohmann::json env;
 	for(size_t i = 0; environ[i] != nullptr; ++i)
 		env[i] = environ[i];
@@ -440,7 +444,8 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 			{"ompthreads", si.batch_info.ompthreads},
 			{"nodes", nodes},
 			{"job_id", si.batch_info.job_id},
-			{"outdir", si.batch_info.outdir}
+			{"outdir", si.batch_info.outdir},
+			{"fwdenv", jfwdenv}
 		}},
 		{"outdir", si.outdir},
 		{"outdir_stats", si.outdir_stats},
@@ -821,7 +826,8 @@ static state_t handler_nimrod_common_resource(state_t state, state_mode_t mode, 
 				nimrun.nimrod_pid = nimrun.cli->add_remote_resource(
 					nimrun.resit->name.c_str(),
 					nimrun.resit->uri.c_str(),
-					static_cast<uint32_t>(nimrun.resit->num_agents)
+					static_cast<uint32_t>(nimrun.resit->num_agents),
+					nimrun.sysinfo.batch_info.fwdenv
 				);
 			}
 		}

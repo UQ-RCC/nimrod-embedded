@@ -60,7 +60,7 @@ static std::vector<char> read_all(FILE *f, size_t bufsize = 1024)
 
 batch_info_t get_batch_info_slurm()
 {
-	batch_info_t bi;
+	batch_info_t bi{};
 
 	if((bi.job_id = getenv("SLURM_JOB_ID")) == nullptr || bi.job_id[0] == '\0')
 		throw std::runtime_error("SLURM_JOB_ID isn't set");
@@ -130,6 +130,21 @@ batch_info_t get_batch_info_slurm()
 
 	if(const char *_ompthreads = getenv("SLURM_CPUS_PER_TASK"))
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
+
+
+	bi.fwdenv.emplace_back("OMP_NUM_THREADS");
+	for(i = 0; environ[i] != nullptr; ++i)
+	{
+		std::string_view env(environ[i]);
+		if(env.find("SLURM_") != 0)
+			continue;
+
+		size_t equal = env.find("=");
+		if(equal == std::string_view::npos)
+			continue;
+
+		bi.fwdenv.emplace_back(env.substr(0, equal));
+	}
 
 	return bi;
 }

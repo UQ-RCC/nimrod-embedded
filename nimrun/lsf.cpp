@@ -22,7 +22,7 @@
 
 batch_info_t get_batch_info_lsf()
 {
-	batch_info_t bi;
+	batch_info_t bi{};
 
 	if(!(bi.job_id = getenv("LSB_JOBID")) || bi.job_id[0] == '\0')
 		throw std::runtime_error("LSB_JOBID isn't set");
@@ -58,6 +58,32 @@ batch_info_t get_batch_info_lsf()
 
 	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
+
+
+	/* https://www.ibm.com/support/knowledgecenter/en/SSWRJV_10.1.0/lsf_config_ref/lsf_envars_ref.html */
+	bi.fwdenv.emplace_back("DAEMON_WRAP_DEBUG");
+	bi.fwdenv.emplace_back("ELIM_ABORT_VALUE");
+	bi.fwdenv.emplace_back("NOCHECKVIEW_POSTEXEC");
+	bi.fwdenv.emplace_back("OMP_NUM_THREADS");
+	bi.fwdenv.emplace_back("RM_CPUTASK");
+	bi.fwdenv.emplace_back("RM_MEM_AFFINITY");
+	bi.fwdenv.emplace_back("TASKMAN_EXEC_RUSAGE");
+	bi.fwdenv.emplace_back("CLEARCASE_DRIVE");
+	bi.fwdenv.emplace_back("CLEARCASE_MOUNTDIR");
+	bi.fwdenv.emplace_back("CLEARCASE_ROOT");
+
+	for(size_t i = 0; environ[i] != nullptr; ++i)
+	{
+		std::string_view env(environ[i]);
+		if(env.find("BSUB_") != 0 || env.find("LS_") != 0 || env.find("LSB_") != 0 || env.find("LSF_") != 0)
+			continue;
+
+		size_t equal = env.find("=");
+		if(equal == std::string_view::npos)
+			continue;
+
+		bi.fwdenv.emplace_back(env.substr(0, equal));
+	}
 
 	return bi;
 }

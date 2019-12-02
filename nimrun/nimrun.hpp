@@ -122,12 +122,14 @@ struct nimrun_args
 int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
 
 using node_map_type = std::unordered_map<std::string, size_t>;
+
 struct batch_info_t
 {
 	const char *job_id;
 	const char *outdir;
 	size_t ompthreads;
 	node_map_type nodes;
+	std::vector<std::string> fwdenv;
 };
 
 using batch_info_proc_t = batch_info_t(*)();
@@ -207,7 +209,7 @@ public:
 
 	pid_t setup_init(const fs::path& setupini);
 	pid_t add_local_resource(const char *name, uint32_t parallelism);
-	pid_t add_remote_resource(const char *name, const char *uri, uint32_t limit);
+	pid_t add_remote_resource(const char *name, const char *uri, uint32_t limit, const std::vector<std::string>& fwdenv);
 	pid_t add_experiment(const char *name, const char *planfile);
 	pid_t assign_resource(const char *resource, const char *exp);
 	pid_t master(const char *exp, uint32_t tick_rate);

@@ -150,7 +150,7 @@ pid_t nimcli::add_local_resource(const char *name, uint32_t parallelism)
 	return fork_and_reset();
 }
 
-pid_t nimcli::add_remote_resource(const char *name, const char *uri, uint32_t limit)
+pid_t nimcli::add_remote_resource(const char *name, const char *uri, uint32_t limit, const std::vector<std::string>& fwdenv)
 {
 	m_args.resize(m_basecount);
 
@@ -174,6 +174,13 @@ pid_t nimcli::add_remote_resource(const char *name, const char *uri, uint32_t li
 	m_args.push_back(m_openssh.c_str());
 	m_args.push_back("--tmpdir");
 	m_args.push_back(m_tmpdir.c_str());
+
+	for(const std::string& e : fwdenv)
+	{
+		m_args.push_back("--forward-env");
+		m_args.push_back(e.c_str());
+	}
+
 	m_args.push_back(nullptr);
 	return fork_and_reset();
 }

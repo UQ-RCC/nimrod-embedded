@@ -112,7 +112,7 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 
 batch_info_t get_batch_info_pbs()
 {
-	batch_info_t bi;
+	batch_info_t bi{};
 
 	if(!(bi.job_id = getenv("PBS_JOBID")))
 		throw std::runtime_error("PBS_JOBID isn't set");
@@ -137,6 +137,21 @@ batch_info_t get_batch_info_pbs()
 	bi.ompthreads = 1;
 	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
 		bi.ompthreads = static_cast<size_t>(atoll(_ompthreads));
+
+	bi.fwdenv.emplace_back("OMP_NUM_THREADS");
+	/* Get all PBS_* environment variables to be forwarded through. */
+	for(size_t i = 0; environ[i] != nullptr; ++i)
+	{
+		std::string_view env(environ[i]);
+		if(env.find("PBS_") != 0)
+			continue;
+
+		size_t equal = env.find("=");
+		if(equal == std::string_view::npos)
+			continue;
+
+		bi.fwdenv.emplace_back(env.substr(0, equal));
+	}
 
 	return bi;
 }

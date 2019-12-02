@@ -1,13 +1,13 @@
 all:
   vars:
-    nimrod_version: 1.1.4
+    nimrod_version: 1.4.0
     nimrod_package: "nimrod-{{ nimrod_version }}"
 
     nimrod_url: "https://github.com/UQ-RCC/nimrodg/releases/download/{{ nimrod_version }}/{{ nimrod_package }}.tar.gz"
-    nimrod_sha256: a0a692ead217987de3593aa5747ea5a734277dff222c76f22156e43e7d831027
+    nimrod_sha256: 4b7e19412e83bcc73232fd81cdde10748b10bf2b8ed7e87081b26a24a28be929
 
     nimrun_module_name: embedded-nimrod
-    nimrun_binary: "/path/to/nimrun"
+    nimrun_binary: "/home/zane/rcchome/staging/nimrod-embedded/build-rcc/nimrun"
 
   hosts:
     # Actual HPCs
@@ -43,4 +43,4 @@ all:
 # Add any hosts you want to install Embedded Nimrod on here
 nimrod_hosts:
   hosts:
-    nimroddevserver:
+    tinaroo:
