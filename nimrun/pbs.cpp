@@ -18,7 +18,6 @@
  * limitations under the License.
  */
 #include <cstring>
-#include <fstream>
 #include "minipbs.hpp"
 #include "nimrun.hpp"
 
@@ -111,25 +110,6 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 	}
 }
 
-static void read_nodesfile(batch_info_t& pi)
-{
-	const char *pbs_nodefile = getenv("PBS_NODEFILE");
-	if(pbs_nodefile == nullptr)
-		throw std::runtime_error("PBS_NODEFILE isn't set");
-
-	std::ifstream f;
-	f.exceptions(std::ifstream::badbit);
-	f.open(pbs_nodefile, std::ios::in);
-
-	for(std::string s; std::getline(f, s);)
-	{
-		if(auto it = pi.nodes.find(s); it != pi.nodes.end())
-			++it->second;
-		else
-			pi.nodes[s] = 1;
-	}
-}
-
 batch_info_t get_batch_info_pbs()
 {
 	batch_info_t bi{};
@@ -144,18 +124,15 @@ batch_info_t get_batch_info_pbs()
 	 * RCC's clusters have libpbs.so in an odd place.
 	 * Try to load it from LD_LIBRARY_PATH. If that fails,
 	 * fallback to /opt/pbs/lib/libpbs.so
-	 *
-	 * The library cannot be loaded at all (ala when we're
-	 * built statically) fall back to reading $PBS_NODEFILE.
 	 */
 	dl_ptr pbs(minipbs_loadlibrary("libpbs.so"));
 	if(!pbs)
 		pbs.reset(minipbs_loadlibrary("/opt/pbs/lib/libpbs.so"));
 
-	if(pbs)
-		get_pbs_info(bi.job_id, bi);
-	else
-		read_nodesfile(bi);
+	if(!pbs)
+		throw std::runtime_error("can't load PBS library");
+
+	get_pbs_info(bi.job_id, bi);
 
 	bi.ompthreads = 1;
 	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
