@@ -24,40 +24,6 @@
 #include <csignal>
 #include <cstring>
 
-struct popen_deleter
-{
-	void operator()(FILE *f) { pclose(f); }
-};
-using popen_ptr = std::unique_ptr<FILE, popen_deleter>;
-
-static size_t read_all(FILE *f, std::vector<char>& data, size_t bufsize = 1024)
-{
-	char *buf = reinterpret_cast<char*>(alloca(bufsize * sizeof(char)));
-	data.clear();
-	for(;;)
-	{
-		size_t nread = fread(buf, 1, bufsize, f);
-		size_t old = data.size();
-		data.resize(old + nread);
-		memcpy(data.data() + old, buf, nread);
-
-		if(feof(f))
-			break;
-
-		if(ferror(f))
-			throw std::system_error(EIO, std::system_category());
-	}
-
-	return data.size();
-}
-
-static std::vector<char> read_all(FILE *f, size_t bufsize = 1024)
-{
-	std::vector<char> data;
-	read_all(f, data, bufsize);
-	return data;
-}
-
 batch_info_t get_batch_info_slurm()
 {
 	batch_info_t bi{};

@@ -76,6 +76,14 @@ struct stdio_deleter
 using stdio_ptr = std::unique_ptr<FILE, stdio_deleter>;
 using file_ptr = stdio_ptr;
 
+struct popen_deleter
+{
+	using pointer = FILE*;
+	void operator()(pointer p) { pclose(p); }
+};
+using popen_ptr = std::unique_ptr<FILE, popen_deleter>;
+
+
 template <typename D>
 auto make_protector(D& deleter)
 {
@@ -234,6 +242,9 @@ private:
 /* utils.cpp */
 std::ofstream open_write_file(const fs::path& path);
 std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size);
+
+size_t read_all(FILE *f, std::vector<char>& data, size_t bufsize = 1024);
+std::vector<char> read_all(FILE *f, size_t bufsize = 1024);
 
 std::string generate_random_password(size_t length);
 std::system_error make_posix_exception(int err);

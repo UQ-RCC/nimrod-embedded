@@ -51,6 +51,34 @@ std::unique_ptr<char[]> read_file(const fs::path& path, size_t& size)
 	return buf;
 }
 
+size_t read_all(FILE *f, std::vector<char>& data, size_t bufsize)
+{
+	char *buf = reinterpret_cast<char*>(alloca(bufsize * sizeof(char)));
+	data.clear();
+	for(;;)
+	{
+		size_t nread = fread(buf, 1, bufsize, f);
+		size_t old = data.size();
+		data.resize(old + nread);
+		memcpy(data.data() + old, buf, nread);
+
+		if(feof(f))
+			break;
+
+		if(ferror(f))
+			throw std::system_error(EIO, std::system_category());
+	}
+
+	return data.size();
+}
+
+std::vector<char> read_all(FILE *f, size_t bufsize)
+{
+	std::vector<char> data;
+	read_all(f, data, bufsize);
+	return data;
+}
+
 std::string generate_random_password(size_t length)
 {
 	/* NB: Keeping this alphanumeric deliberately. */
