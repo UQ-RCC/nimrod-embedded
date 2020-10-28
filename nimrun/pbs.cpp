@@ -19,6 +19,7 @@
  */
 #include <cstring>
 #include "minipbs.hpp"
+#include "json.hpp"
 #include "nimrun.hpp"
 
 using namespace minipbs;
@@ -110,6 +111,27 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 	}
 }
 
+static void parse_qstat(const char *jobid, batch_info_t& bi)
+{
+	popen_ptr proc(popen("qstat -f -F json", "r"));
+	if(!proc)
+		throw std::system_error(errno, std::system_category());
+
+	std::vector<char> output = read_all(proc.get(), 1024);
+
+	int ret = pclose(proc.release());
+	if(ret < 0)
+		throw std::system_error(errno, std::system_category());
+
+	if(ret != 0)
+		throw std::runtime_error("failed to parse hosts list");
+
+	nlohmann::json j = nlohmann::json::parse(output.data());
+
+	const std::string& exechost = j["Jobs"][jobid]["exec_host"];
+	read_exechost_attribute(exechost.c_str(), bi);
+}
+
 batch_info_t get_batch_info_pbs()
 {
 	batch_info_t bi{};
@@ -129,10 +151,10 @@ batch_info_t get_batch_info_pbs()
 	if(!pbs)
 		pbs.reset(minipbs_loadlibrary("/opt/pbs/lib/libpbs.so"));
 
-	if(!pbs)
-		throw std::runtime_error("can't load PBS library");
-
-	get_pbs_info(bi.job_id, bi);
+	if(pbs)
+		get_pbs_info(bi.job_id, bi);
+	else
+		parse_qstat(bi.job_id, bi);
 
 	bi.ompthreads = 1;
 	if(const char *_ompthreads = getenv("OMP_NUM_THREADS"))
