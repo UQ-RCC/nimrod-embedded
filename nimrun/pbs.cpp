@@ -46,10 +46,10 @@ public:
 
 static pbs_error_category_t pbs_error_category;
 
-static void read_exechost_attribute(const struct attrl *a, batch_info_t& pi)
+static void read_exechost_attribute(const char *a, batch_info_t& pi)
 {
 	/* tn109c/5*4+tn111c/3*4+tn119a/5*4+tn223b/3*41 */
-	for(const char *s = a->value;;)
+	for(const char *s = a;;)
 	{
 		char namebuf[32];
 		memset(namebuf, 0, sizeof(namebuf));
@@ -104,7 +104,7 @@ static void get_pbs_info(const char *job, batch_info_t& pi)
 	{
 		if(!strcmp(a->name, ATTR_exechost))
 		{
-			read_exechost_attribute(a, pi);
+			read_exechost_attribute(a->value, pi);
 			break;
 		}
 	}
