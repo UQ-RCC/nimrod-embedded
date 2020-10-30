@@ -91,6 +91,17 @@ auto make_protector(D& deleter)
 	return ptr_type(&deleter, [](D* d) { (*d)(); });
 }
 
+enum {
+	log_level_none = 0,
+	log_level_debug = 1,
+	log_level_nimrod = 2,
+	log_level_nimrod_debug = 3,
+	log_level_state = 4,
+	log_level_signal = 5,
+};
+
+void log_debug(uint32_t level, const char *fmt, ...) noexcept;
+void log_error(const char *fmt, ...) noexcept;
 
 enum class cluster_t : size_t
 {

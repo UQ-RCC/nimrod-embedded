@@ -178,16 +178,7 @@ static const char *state_strings[] = {
 	nullptr
 };
 
-enum {
-	log_level_none = 0,
-	log_level_debug = 1,
-	log_level_nimrod = 2,
-	log_level_nimrod_debug = 3,
-	log_level_state = 4,
-	log_level_signal = 5,
-};
-
-static void log_debug(uint32_t level, const char *fmt, ...) noexcept
+void log_debug(uint32_t level, const char *fmt, ...) noexcept
 {
 	if(nimrun.args.debug < level)
 		return;
@@ -198,7 +189,7 @@ static void log_debug(uint32_t level, const char *fmt, ...) noexcept
 	va_end(ap);
 }
 
-static void log_error(const char *fmt, ...) noexcept
+void log_error(const char *fmt, ...) noexcept
 {
 	va_list ap;
 	va_start(ap, fmt);
