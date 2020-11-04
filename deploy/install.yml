@@ -4,9 +4,9 @@
   tasks:
     - name: download openjdk tarball
       get_url:
-        url: https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz
-        dest: "./openjdk-11.0.2_linux-x64_bin.tar.gz"
-        checksum: sha256:99be79935354f5c0df1ad293620ea36d13f48ec3ea870c838f20c504c9668b57
+        url: https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jdk_x64_linux_hotspot_11.0.8_10.tar.gz
+        dest: "./OpenJDK11U-jdk_x64_linux_hotspot_11.0.8_10.tar.gz"
+        checksum: sha256:6e4cead158037cb7747ca47416474d4f408c9126be5b96f9befd532e0a762b47
       register: openjdk_tarball
     - name: download qpid tarball
       get_url:
@@ -25,8 +25,8 @@
   become: no
   vars:
     bin_dir: "{{ root_dir }}/bin"
-    java_home: "{{ root_dir }}/lib/jvm/jdk-11.0.2"
-    qpid_home: "{{ root_dir }}/opt/qpid-broker/7.1.2"
+    java_home: "{{ root_dir }}/lib/jvm/jdk"
+    qpid_home: "{{ root_dir }}/opt/qpid-broker"
     nimrod_home: "{{ root_dir }}/opt/{{ nimrod_package }}"
   tasks:
     - name: create folders
@@ -40,15 +40,19 @@
     - name: extract openjdk tarball
       unarchive:
         src: "{{ hostvars.localhost.openjdk_tarball.dest }}"
-        dest: "{{ java_home }}/../"
+        dest: "{{ java_home }}"
         remote_src: no
         creates: "{{ java_home }}/bin/java"
+        extra_opts:
+          - --strip-components=1
     - name: extract qpid tarball
       unarchive:
         src: "{{ hostvars.localhost.qpid_tarball.dest }}"
-        dest: "{{ root_dir }}/opt"
+        dest: "{{ qpid_home }}"
         remote_src: no
         creates: "{{ qpid_home }}/bin/qpid-server"
+        extra_opts:
+          - --strip-components=2
     - name: extract nimrod tarball
       unarchive:
         src: "{{ hostvars.localhost.nimrod_tarball.dest }}"
@@ -65,6 +69,7 @@
           template:
             src: nimrod-embedded.lua.j2
             dest: "{{ module_dir.path }}/{{ nimrod_version }}.lua"
+            mode: 0644
         - name: generate nimexec
           template:
             src: nimexec.j2
@@ -83,6 +88,7 @@
           template:
             src: nimrod-embedded.j2
             dest: "{{ module_dir.path }}/{{ nimrod_version }}"
+            mode: 0644
         - name: generate nimexec
           template:
             src: nimexec.j2
