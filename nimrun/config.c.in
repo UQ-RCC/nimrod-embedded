@@ -6,13 +6,9 @@
 #include "config.h"
 
 const compile_info_t g_compile_info = {
-	.git = {
-		.sha1			= "@GIT_SHA1@",
-		.description	= "@GIT_DESCRIBE@",
-		.dirty			= @GIT_DIRTY@,
-	},
+	.revision			= "@GIT_HASH@",
 	.version = {
-		.nimrun			= "@GIT_DESCRIBE@",
+		.nimrun			= NIMRUN_VERSION_STRING,
 		.openssl		= "@OPENSSL_VERSION@"
 	}
 };

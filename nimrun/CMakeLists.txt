@@ -9,19 +9,12 @@ include(GetGitRevisionDescription)
 find_package(Threads REQUIRED)
 find_package(OpenSSL 1.0.1 REQUIRED)
 
-get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-git_describe(GIT_DESCRIBE)
-git_local_changes(GIT_LOCAL_CHANGES)
+if(NOT GIT_HASH)
+	get_git_head_revision(GIT_REFSPEC GIT_HASH)
+endif()
 
 if(GIT_DESCRIBE MATCHES "-NOTFOUND$")
 	set(GIT_DESCRIBE "UNKNOWN")
-endif()
-
-if(GIT_LOCAL_CHANGES MATCHES "DIRTY")
-	set(GIT_DESCRIBE "${GIT_DESCRIBE}-${GIT_LOCAL_CHANGES}")
-	set(GIT_DIRTY 1)
-else()
-	set(GIT_DIRTY 0)
 endif()
 
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${CMAKE_CURRENT_BINARY_DIR}/config.h")

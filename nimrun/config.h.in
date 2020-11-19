@@ -6,14 +6,21 @@
 #ifndef NIMRUN_CONFIG_H_
 #define NIMRUN_CONFIG_H_
 
+#define NIMRUN_XSTR(s)          NIMRUN_STR(s)
+#define NIMRUN_STR(s)           #s
+
+#define NIMRUN_VERSION_MAJOR    1
+#define NIMRUN_VERSION_MINOR    0
+#define NIMRUN_VERSION_PATCH    0
+
+#define NIMRUN_VERSION_STRING \
+    NIMRUN_XSTR(NIMRUN_VERSION_MAJOR) "." \
+    NIMRUN_XSTR(NIMRUN_VERSION_MINOR) "." \
+    NIMRUN_XSTR(NIMRUN_VERSION_PATCH)
+
 typedef struct
 {
-	struct
-	{
-		const char *sha1;
-		const char *description;
-		int dirty;
-	} git;
+	const char *revision;
 	struct
 	{
 		const char *nimrun;

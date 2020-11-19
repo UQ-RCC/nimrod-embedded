@@ -459,11 +459,7 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 		{"password", si.password},
 		{"interfaces", ips},
 		{"compile_info", {
-			{"git", {
-				{"sha1", g_compile_info.git.sha1},
-				{"description", g_compile_info.git.description},
-				{"dirty", g_compile_info.git.dirty}
-			}},
+			{"revision", g_compile_info.revision},
 			{"version", {
 				{"nimrun", g_compile_info.version.nimrun},
 				{"openssl", g_compile_info.version.openssl},

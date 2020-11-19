@@ -185,7 +185,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 		if(args->version)
 		{
 			fprintf(out, "nimrun %s OpenSSL/%s\n", g_compile_info.version.nimrun, g_compile_info.version.openssl);
-			fprintf(out, "Commit: %s\n", g_compile_info.git.sha1);
+			fprintf(out, "Revision: %s\n", g_compile_info.revision);
 			return status;
 		}
 	}
