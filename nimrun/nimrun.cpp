@@ -18,7 +18,6 @@
  * limitations under the License.
  */
 #include <cstring>
-#include <cstdarg>
 #include <algorithm>
 #include <atomic>
 #include <unistd.h>
@@ -28,6 +27,7 @@
 #include <config.h>
 #include <iomanip>
 #include <fstream>
+#include <iostream>
 #include "config.h"
 #include "nimrun.hpp"
 
@@ -178,23 +178,19 @@ static const char *state_strings[] = {
 	nullptr
 };
 
-void log_debug(uint32_t level, const char *fmt, ...) noexcept
+std::ostream& log_error() noexcept
 {
-	if(nimrun.args.debug < level)
-		return;
-
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
+	return std::cerr;
 }
 
-void log_error(const char *fmt, ...) noexcept
+std::ostream& log_debug(uint32_t level) noexcept
 {
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
+	static std::ostream s(nullptr);
+
+	if(nimrun.args.debug >= level)
+		return std::cout;
+
+	return s;
 }
 
 static void do_reap(nimrun_state& nimrun) noexcept
@@ -214,7 +210,7 @@ static void do_reap(nimrun_state& nimrun) noexcept
 		if(corpse == 0)
 			break;
 
-		log_debug(log_level_signal, "SIGNAL: Caught SIGCHLD for PID %d\n", corpse);
+		log_debug(log_level_signal) << "SIGNAL: Caught SIGCHLD for PID " << corpse << std::endl;
 
 		int ret;
 		if(WIFEXITED(status))
@@ -226,14 +222,14 @@ static void do_reap(nimrun_state& nimrun) noexcept
 
 		if(nimrun.qpid >= 1 && corpse == nimrun.qpid)
 		{
-			log_debug(log_level_signal, "SIGNAL: PID %d is QPID!\n", corpse);
+			log_debug(log_level_signal) << "SIGNAL: PID " << corpse << " is QPID!" << std::endl;
 			nimrun.qpid = -1;
 			nimrun.qpid_ret = ret;
 		}
 		
 		if(nimrun.nimrod_pid >= 1 && corpse == nimrun.nimrod_pid)
 		{
-			log_debug(log_level_signal, "SIGNAL: PID %d is Nimrod!\n", corpse);
+			log_debug(log_level_signal) << "SIGNAL: PID " << corpse << " is Nimrod!" << std::endl;
 			nimrun.nimrod_pid = -1;
 			nimrun.nimrod_ret = ret;
 		}
@@ -297,7 +293,7 @@ static std::optional<fs::path> locate_openssh()
 #include "json.hpp"
 
 NLOHMANN_JSON_SERIALIZE_ENUM(cluster_t, {
-    {cluster_t::unknown,		"unknown"},
+	{cluster_t::unknown,		"unknown"},
 	{cluster_t::generic_pbs,	"generic_pbs"},
 	{cluster_t::generic_slurm,	"generic_slurm"},
 	{cluster_t::generic_lsf,	"generic_lsf"}
@@ -517,20 +513,16 @@ static cluster_t detect_cluster(const char *cluster)
 static void mkdir(const fs::path& p)
 {
     std::error_code ec;
-    if(nimrun.args.debug >= log_level_debug)
-    {
-        std::string ss = p.u8string();
-        log_debug(log_level_debug, "IO: fs::create_directories(%s)\n", ss.c_str());
-    }
+
+    log_debug(log_level_debug) << "IO: fs::create_directories(" << p << ")" << std::endl;
 
     fs::create_directories(p, ec);
     if(ec)
     {
-        std::string ss = p.u8string();
-        log_error("IO: Unable to create directory\n");
-        log_error("IO:   path    = %s\n", ss.c_str());
-        log_error("IO:   code    = %d\n", ec.value());
-        log_error("IO:   message = %s\n", ec.message().c_str());
+        log_error() << "IO: Unable to create directory"   << std::endl;
+        log_error() << "IO:   path    = " << p            << std::endl;
+        log_error() << "IO:   code    = " << ec.value()   << std::endl;
+        log_error() << "IO:   message = " << ec.message() << std::endl;
         throw std::system_error(ec);
     }
 }
@@ -547,7 +539,10 @@ int main(int argc, char **argv)
 
 	cluster_t cluster = detect_cluster(args.cluster);
 	if(cluster == cluster_t::unknown)
-		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
+	{
+		log_error() << "Unknown cluster, please contact your system administrator..." << std::endl;
+		return 1;
+	}
 
 	gather_system_info(nimrun.sysinfo, args, cluster);
 
@@ -555,10 +550,7 @@ int main(int argc, char **argv)
 
 	nlohmann::json jcfg = dump_system_info_json(args, sysinfo);
 	if(args.debug >= log_level_debug)
-	{
-		std::string ss = jcfg.dump(4, ' ');
-		log_debug(log_level_debug, "%s\n", ss.c_str());
-	}
+		log_debug(log_level_debug) << std::setw(4) << jcfg << std::setw(0) << std::endl;
 
 	/* It is expected that this directory is accessible from any node. */
 	mkdir(sysinfo.outdir_stats);
@@ -588,14 +580,21 @@ int main(int argc, char **argv)
 	}
 
 	if(!sysinfo.openssh)
-		return log_error("Unable to locate OpenSSH. Exiting...\n"), 1;
+	{
+		log_error() << "Unable to locate OpenSSH. Exiting..." << std::endl;
+		return 1;
+	}
 
 	if(!fs::is_regular_file(sysinfo.java))
-		return log_error("Unable to locate Java. Exiting...\n"), 1;
+	{
+		log_error() << "Unable to locate Java. Exiting..." << std::endl;
+		return 1;
+	}
 
 	if(sysinfo.cluster == cluster_t::unknown)
 	{
-		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
+		log_error() << "Unknown cluster, please contact your system administrator..." << std::endl;
+		return 1;
 	}
 
 	init_openssl();
@@ -687,12 +686,12 @@ int main(int argc, char **argv)
 		{
 			try
 			{
-				log_debug(log_level_state, "LEAVE %s\n", state_strings[ostate]);
+				log_debug(log_level_state) << "LEAVE " << state_strings[ostate] << std::endl;
 				state_handlers[ostate].handler(old_state, state_mode_t::leave, nimrun);
 			}
 			catch(std::exception& e)
 			{
-				log_error("Caught exception during LEAVE transition: %s\n", e.what());
+				log_error() << "Caught exception during LEAVE transition: " << e.what() << std::endl;
 				state = state_handlers[istate].interrupt_state;
 			}
 
@@ -702,12 +701,12 @@ int main(int argc, char **argv)
 
 			try
 			{
-				log_debug(log_level_state, "ENTER %s\n", state_strings[istate]);
+				log_debug(log_level_state) << "ENTER " << state_strings[istate] << std::endl;
 				state_handlers[istate].handler(state, state_mode_t::enter, nimrun);
 			}
 			catch(std::exception& e)
 			{
-				log_error("Caught exception during ENTER transition: %s\n", e.what());
+				log_error() << "Caught exception during ENTER transition: " << e.what() << std::endl;
 				state = state_handlers[istate].interrupt_state;
 			}
 		}
@@ -722,12 +721,12 @@ int main(int argc, char **argv)
 		{
 			try
 			{
-				log_debug(log_level_state, "RUN   %s\n", state_strings[istate]);
+				log_debug(log_level_state) << "RUN   " << state_strings[istate] << std::endl;
 				state = state_handlers[istate].handler(state, state_mode_t::run, nimrun);
 			}
 			catch(std::exception& e)
 			{
-				log_error("Caught exception during RUN: %s\n", e.what());
+				log_error() << "Caught exception during RUN: " << e.what() << std::endl;
 				state = state_handlers[istate].interrupt_state;
 			}
 		}
@@ -770,7 +769,7 @@ static state_t handler_qpid_wait(state_t state, state_mode_t mode, nimrun_state&
 	if(ports.empty())
 		return state;
 
-	log_debug(log_level_debug, "Detected QPID listening on port %hu\n", ports[0]);
+	log_debug(log_level_debug) << "Detected QPID listening on port " << ports[0] << std::endl;
 	nimrun.qpid_port = ports[0];
 	return state_t::nimrod_createfiles;
 }

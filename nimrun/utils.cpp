@@ -103,11 +103,11 @@ std::system_error make_posix_exception(int err)
 
 pid_t spawn_process(const char *path, char * const *argv, int fdin) noexcept
 {
-	log_debug(log_level_debug, "SPAWN: ");
+	log_debug(log_level_debug) << "SPAWN: ";
 	for(char * const *a = argv; *a != nullptr; ++a) {
-		log_debug(log_level_debug, "%s ", *a);
+		log_debug(log_level_debug) << *a << " ";
 	}
-	log_debug(log_level_debug, "\n");
+	log_debug(log_level_debug) << std::endl;
 
 	pid_t pid = fork();
 	if(pid != 0)

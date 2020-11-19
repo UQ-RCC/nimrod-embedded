@@ -100,8 +100,8 @@ enum {
 	log_level_signal = 5,
 };
 
-void log_debug(uint32_t level, const char *fmt, ...) noexcept;
-void log_error(const char *fmt, ...) noexcept;
+std::ostream& log_error() noexcept;
+std::ostream& log_debug(uint32_t level) noexcept;
 
 enum class cluster_t : size_t
 {
