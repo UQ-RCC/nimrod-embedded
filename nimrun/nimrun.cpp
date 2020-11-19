@@ -528,13 +528,24 @@ int main(int argc, char **argv)
 	if(cluster == cluster_t::unknown)
 		return log_error("Unknown cluster, please contact your system administrator...\n"), 1;
 
-
 	gather_system_info(nimrun.sysinfo, args, cluster);
 
-	nimrun_system_info& sysinfo = nimrun.sysinfo;
+	const nimrun_system_info& sysinfo = nimrun.sysinfo;
+
+	nlohmann::json jcfg = dump_system_info_json(args, sysinfo);
+	if(args.debug >= log_level_debug)
+	{
+		std::string ss = jcfg.dump(4, ' ');
+		log_debug(log_level_debug, "%s\n", ss.c_str());
+	}
 
 	/* It is expected that this directory is accessible from any node. */
 	fs::create_directory(sysinfo.outdir_stats);
+	{
+		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
+		os << std::setw(4) << jcfg << std::endl;
+	}
+
 	fs::create_directory(sysinfo.stdout_path);
 	fs::create_directory(sysinfo.stderr_path);
 
@@ -555,23 +566,11 @@ int main(int argc, char **argv)
 		fs::copy(nimrun.planfile, sysinfo.outdir_stats / "planfile.pln", fs::copy_options::overwrite_existing);
 	}
 
-	nlohmann::json jcfg = dump_system_info_json(args, sysinfo);
-	{
-		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
-		os << std::setw(4) << jcfg << std::endl;
-	}
-
 	if(!sysinfo.openssh)
 		return log_error("Unable to locate OpenSSH. Exiting...\n"), 1;
 
 	if(!fs::is_regular_file(sysinfo.java))
 		return log_error("Unable to locate Java. Exiting...\n"), 1;
-
-	if(args.debug >= log_level_debug)
-	{
-		std::string ss = jcfg.dump(4, ' ');
-		log_debug(log_level_debug, "%s\n", ss.c_str());
-	}
 
 	if(sysinfo.cluster == cluster_t::unknown)
 	{
