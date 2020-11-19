@@ -514,6 +514,27 @@ static cluster_t detect_cluster(const char *cluster)
 	return cluster_t::unknown;
 }
 
+static void mkdir(const fs::path& p)
+{
+    std::error_code ec;
+    if(nimrun.args.debug >= log_level_debug)
+    {
+        std::string ss = p.u8string();
+        log_debug(log_level_debug, "IO: fs::create_directories(%s)\n", ss.c_str());
+    }
+
+    fs::create_directories(p, ec);
+    if(ec)
+    {
+        std::string ss = p.u8string();
+        log_error("IO: Unable to create directory\n");
+        log_error("IO:   path    = %s\n", ss.c_str());
+        log_error("IO:   code    = %d\n", ec.value());
+        log_error("IO:   message = %s\n", ec.message().c_str());
+        throw std::system_error(ec);
+    }
+}
+
 int main(int argc, char **argv)
 {
 	nimrun_args& args = nimrun.args;
@@ -540,14 +561,14 @@ int main(int argc, char **argv)
 	}
 
 	/* It is expected that this directory is accessible from any node. */
-	fs::create_directory(sysinfo.outdir_stats);
+	mkdir(sysinfo.outdir_stats);
 	{
 		std::ofstream os(open_write_file(sysinfo.outdir_stats / "nimrun-config.json"));
 		os << std::setw(4) << jcfg << std::endl;
 	}
 
-	fs::create_directory(sysinfo.stdout_path);
-	fs::create_directory(sysinfo.stderr_path);
+	mkdir(sysinfo.stdout_path);
+	mkdir(sysinfo.stderr_path);
 
 	if(args.mode == exec_mode_t::nimexec)
 	{
@@ -639,7 +660,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create nimrod.ini. nimrod-setup.ini can't be done until later. */
-	fs::create_directory(nimrun.sysinfo.nimrod_work);
+	mkdir(nimrun.sysinfo.nimrod_work);
 	{
 		std::ofstream os(open_write_file(nimrun.sysinfo.nimrod_ini));
 		build_nimrod_ini(os, nimrun.sysinfo.nimrod_dbpath);
