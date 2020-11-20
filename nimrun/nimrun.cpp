@@ -304,6 +304,30 @@ NLOHMANN_JSON_SERIALIZE_ENUM(exec_mode_t, {
 	{exec_mode_t::nimexec,		"nimexec"}
 });
 
+static std::string get_username()
+{
+	const char *user;
+	struct passwd *passwd;
+
+	errno = 0;
+	if((passwd = getpwuid(geteuid())) == nullptr) {
+		/* Happens on NIS systems. */
+		log_error() << "OS: getpwuid() failed, falling back to $USER" << std::endl;
+		log_error() << "OS:   errno   = " << errno                    << std::endl;
+		log_error() << "OS:   message = " << strerror(errno)          << std::endl;
+	} else if(passwd->pw_name == nullptr || passwd->pw_name[0] == '\0') {
+		log_error() << "OS: getpwuid() returned NULL or empty user, falling back to $USER" << std::endl;
+	} else {
+		return passwd->pw_name;
+	}
+
+	user = getenv("USER");
+	if(user && user[0])
+		return user;
+
+	throw std::runtime_error("Unable to determine user name, please fix your system");
+}
+
 static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& args, cluster_t cluster)
 {
 	sysinfo.cluster = cluster;
@@ -317,14 +341,9 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 		throw make_posix_exception(errno);
 	}
 
-	errno = 0;
-	struct passwd *passwd = getpwuid(geteuid());
-	if(passwd == nullptr)
-		throw make_posix_exception(errno);
-
 	fs::path cwd = fs::current_path();
 
-	sysinfo.username = passwd->pw_name;
+	sysinfo.username = get_username();
 	sysinfo.hostname = sysinfo.uname.nodename;
 	sysinfo.simple_hostname = sysinfo.hostname.substr(0, sysinfo.hostname.find_first_of('.'));
 	sysinfo.batch_info.job_id = "";
@@ -546,7 +565,6 @@ int main(int argc, char **argv)
 	}
 
 	gather_system_info(nimrun.sysinfo, args, cluster);
-
 	const nimrun_system_info& sysinfo = nimrun.sysinfo;
 
 	nlohmann::json jcfg = dump_system_info_json(args, sysinfo);

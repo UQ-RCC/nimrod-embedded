@@ -191,7 +191,6 @@ static std::vector<tcp_entry> read_tcp_entries()
 
 		tcp.push_back(e);
 	}
-
 	f.close();
 	f.open("/proc/net/tcp6", std::ios::binary);
 	std::getline(f, entry);
