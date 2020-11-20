@@ -310,7 +310,12 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 
 	memset(&sysinfo.uname, 0, sizeof(sysinfo.uname));
 	if(uname(&sysinfo.uname) < 0)
+	{
+		log_error() << "OS: uname() failed" << std::endl;
+		log_error() << "OS:   errno   = "   << errno << std::endl;
+		log_error() << "OS:   message = "   << strerror(errno) << std::endl;
 		throw make_posix_exception(errno);
+	}
 
 	errno = 0;
 	struct passwd *passwd = getpwuid(geteuid());
