@@ -89,7 +89,9 @@ std::string generate_random_password(size_t length)
 	if(!f)
 		throw make_posix_exception(errno);
 
-	fread(&s[0], s.length(), 1, f.get());
+	if(fread(&s[0], s.length(), 1, f.get()) != 1)
+		throw make_posix_exception(EIO);
+
 	for(size_t i = 0; i < s.length(); ++i)
 		s[i] = s_character_set[s[i] % (sizeof(s_character_set) - 1)];
 
