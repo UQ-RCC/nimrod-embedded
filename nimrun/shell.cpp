@@ -76,11 +76,11 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 			os << p.second << std::endl;
 		os << std::endl;
 		os << "task main" << std::endl;
-		os << "\tonerror ignore" << std::endl;
-		os << "\tredirect stdout to stdout.txt" << std::endl;
-		os << "\tredirect stderr to stderr.txt" << std::endl;
+		os << "    onerror ignore" << std::endl;
+		os << "    redirect stdout to stdout.txt" << std::endl;
+		os << "    redirect stderr to stderr.txt" << std::endl;
 
-		os << "\texec " << scriptpath;
+		os << "    exec " << scriptpath;
 		for(int i = 1; i < argc; ++i)
 			os << " " << std::quoted(argv[i]);
 		os << std::endl;
@@ -88,8 +88,8 @@ void process_shellfile(const fs::path& file, const fs::path& planpath, const fs:
 		fs::path o = outdir / "stdout-$jobindex.txt";
 		fs::path e = errdir / "stderr-$jobindex.txt";
 
-		os << "\tcopy node:stdout.txt root:" << std::quoted(o.c_str()) << std::endl;
-		os << "\tcopy node:stderr.txt root:" << std::quoted(e.c_str()) << std::endl;
+		os << "    copy node:stdout.txt root:" << std::quoted(o.c_str()) << std::endl;
+		os << "    copy node:stderr.txt root:" << std::quoted(e.c_str()) << std::endl;
 		os << "endtask" << std::endl;
 
 		fs::permissions(planpath, fs::perms::owner_read | fs::perms::owner_write);
