@@ -361,7 +361,7 @@ static void gather_system_info(nimrun_system_info& sysinfo, const nimrun_args& a
 		ri.name = e.first;
 		ri.uri = "ssh://";
 		ri.uri.append(ri.name);
-		ri.num_agents = e.second / sysinfo.batch_info.ompthreads;
+		ri.num_agents = std::min(size_t(args.max_agents_per_node), e.second / sysinfo.batch_info.ompthreads);
 		ri.local = e.first == sysinfo.simple_hostname;
 		sysinfo.nimrod_resources.emplace_back(std::move(ri));
 	}
@@ -482,6 +482,7 @@ static nlohmann::json dump_system_info_json(const nimrun_args& args, const nimru
 		{"stderr_path_rel", si.stderr_path_rel},
 		{"password", si.password},
 		{"interfaces", ips},
+		{"max_agents_per_node", args.max_agents_per_node},
 		{"compile_info", {
 			{"revision", g_compile_info.revision},
 			{"version", {

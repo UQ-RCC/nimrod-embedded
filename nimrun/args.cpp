@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <climits>
 #include <config.h>
 #include "parg.h"
 #include "nimrun.hpp"
@@ -35,6 +36,7 @@
 #define ARGDEF_QPID_HOME			304
 #define ARGDEF_JAVA_HOME			305
 #define ARGDEF_NIMROD_HOME			306
+#define ARGDEF_MAX_AGENTS_PER_NODE	307
 #define ARGDEF_HELP         		'h'
 
 static struct parg_option argdefs[] = {
@@ -47,6 +49,7 @@ static struct parg_option argdefs[] = {
 	{"qpid-home",				PARG_REQARG,	nullptr,	ARGDEF_QPID_HOME},
 	{"java-home",				PARG_REQARG,	nullptr,	ARGDEF_JAVA_HOME},
 	{"nimrod-home",				PARG_REQARG,	nullptr,	ARGDEF_NIMROD_HOME},
+	{"max-agents-per-node",		PARG_REQARG,	nullptr,	ARGDEF_MAX_AGENTS_PER_NODE},
 	{"help",					PARG_NOARG,		nullptr,	ARGDEF_HELP},
 	{nullptr,					0,				nullptr,	0}
 };
@@ -64,6 +67,8 @@ static const char *USAGE_OPTIONS =
 "  --qpid-home             The Qpid home directory. If unspecified, use $QPID_HOME\n"
 "  --java-home             The Java home directory. If unspecified, use $JAVA_HOME\n"
 "  --nimrod-home           The Nimrod home directory. If unspecified, use $NIMROD_HOME\n"
+"  --max-agents-per-node   A hard cap on the number of agents per node.\n"
+"                          Handy for misbehaving software, e.g. MATLAB.\n"
 "";
 
 int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
@@ -118,6 +123,11 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 				args->nimrod_home = ps.optarg;
 				break;
 
+			case ARGDEF_MAX_AGENTS_PER_NODE:
+				if(sscanf(ps.optarg, "%u", &args->max_agents_per_node) != 1)
+					return 2;
+				break;
+
 			case 1:
 				if(args->planfile != nullptr)
 					return 2;
@@ -133,6 +143,9 @@ int parse_args_nimrun(int argc, char **argv, nimrun_args *args) noexcept
 
 	if(args->planfile == nullptr)
 		return 2;
+
+	if(args->max_agents_per_node == 0)
+		args->max_agents_per_node = UINT32_MAX;
 
 	return 0;
 }
@@ -172,6 +185,7 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 		args->qpid_home = nullptr;
 		args->java_home = nullptr;
 		args->nimrod_home = nullptr;
+		args->max_agents_per_node = 0;
 	}
 	else
 	{
@@ -228,5 +242,17 @@ int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *ar
 	if(args->cluster != nullptr && args->cluster[0] == '\0')
 		args->cluster = nullptr;
 
+	if(args->max_agents_per_node == 0)
+	{
+		const char *val = getenv("NIMRUN_MAX_AGENTS_PER_NODE");
+		if(val != nullptr && val[0] != '\0')
+		{
+			if(sscanf(val, "%u", &args->max_agents_per_node) != 1)
+				args->max_agents_per_node = 0;
+		}
+	}
+
+	if(args->max_agents_per_node == 0)
+		args->max_agents_per_node = UINT32_MAX;
 	return 0;
 }

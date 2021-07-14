@@ -136,6 +136,7 @@ struct nimrun_args
 	const char	*qpid_home;
 	const char	*java_home;
 	const char	*nimrod_home;
+	uint32_t  	max_agents_per_node;
 };
 
 int parse_arguments(int argc, char **argv, FILE *out, FILE *err, nimrun_args *args);
